@@ -5,6 +5,8 @@ OpenStack Swift Protocol massive data uploader in Go
 
 ## To-Do's
 
+- Manifest size pre-calculation and related warnings (manifest has max size)
+- Option to upload only missing chunks of a file (easier retries)
 - Accept VCAP.json instead of asking for each cred
 - Upload progress bars
 - Colorized output
