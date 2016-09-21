@@ -7,24 +7,37 @@ import "fmt"
 // etag is the md5 hash of the file's contents
 // size is the number of bytes in the file
 type Chunk struct {
-	path string `json:"path"`
-	etag string `json:"etag"`
-	size uint   `json:"size_bytes"`
+	name          string
+	containerName string
+	etag          string `json:"etag"`
+	size          uint   `json:"size_bytes"`
 }
 
 // NewSloChunk creates a new entry in an SLO Manifest
 func NewChunk(chunkName, containerName, hashString string, numberBytes uint) Chunk {
 	return Chunk{
-		path: chunkName + "/" + containerName,
-		etag: hashString,
-		size: numberBytes,
+		name:          chunkName,
+		containerName: containerName,
+		etag:          hashString,
+		size:          numberBytes,
 	}
 }
 
 // Path returns the object storage object name for this
 // SLO Chunk
 func (o Chunk) Path() string {
-	return o.path
+	return o.containerName + "/" + o.name
+}
+
+// Container returns the name of this object's container in
+// object storage.
+func (o Chunk) Container() string {
+	return o.containerName
+}
+
+// Name returns the object name of this chunk in object storage.
+func (o Chunk) Name() string {
+	return o.name
 }
 
 // Hash returns the md5 hash name for this
