@@ -10,6 +10,7 @@ type Manager struct {
 	NumberNeedsUpload uint
 }
 
+// Status monitors the current status of an upload.
 type Status struct {
 	UploadSize     uint
 	TotalUploads   uint
@@ -18,6 +19,8 @@ type Status struct {
 	uploadDuration time.Duration
 }
 
+// NewStatus creates a new Status with the number of individual
+// uploads and the size of each upload.
 func NewStatus(numberUploads, uploadSize uint) *Status {
 	return &Status{
 		UploadSize:     uploadSize,
@@ -26,6 +29,9 @@ func NewStatus(numberUploads, uploadSize uint) *Status {
 	}
 }
 
+// SetNumberUploads will change the number of uploads that the
+// Status expects unless the Start() method has already been
+// called. If it has already been started, nothing will happen.
 func (s *Status) SetNumberUploads(number uint) {
 	if s.uploadStarted != (time.Time{}) {
 		return
