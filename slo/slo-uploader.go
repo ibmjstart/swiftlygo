@@ -84,7 +84,7 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 	outputChannel <- fmt.Sprintf("file will be split into %d chunks of size %d bytes", numChunks, chunkSize)
 	return &Uploader{
 		outputChannel: outputChannel,
-		Status:        NewStatus(numChunks, chunkSize, outputChannel),
+		Status:        newStatus(numChunks, chunkSize, outputChannel),
 		Manifest:      sloManifest,
 		Connection:    connection,
 		Source:        NewSource(source, chunkSize, numChunks),
@@ -103,15 +103,15 @@ func (u *Uploader) Upload() error {
 	if err != nil {
 		return fmt.Errorf("Error taking inventory: %s", err)
 	}
-	u.Status.SetNumberUploads(u.Inventory.UploadsNeeded())
-	u.Status.Start()
+	u.Status.setNumberUploads(u.Inventory.UploadsNeeded())
+	u.Status.start()
 	chunkCompleteChannel := make(chan int, u.MaxUploaders)
 	var currrentNumberUploaders uint = 0
 	for readyChunkNumber := range chunkPreparedChannel {
 		if currrentNumberUploaders >= u.MaxUploaders {
 			// Wait for one to finish before starting a new one
 			<-chunkCompleteChannel
-			u.Status.UploadComplete()
+			u.Status.uploadComplete()
 			currrentNumberUploaders -= 1
 		}
 		// Begin new upload
@@ -119,16 +119,16 @@ func (u *Uploader) Upload() error {
 			go u.uploadDataForChunk(readyChunkNumber, chunkCompleteChannel)
 			currrentNumberUploaders += 1
 		}
-		u.Status.Print()
+		u.Status.print()
 	}
 	for currrentNumberUploaders > 0 {
 		<-chunkCompleteChannel
-		u.Status.UploadComplete()
-		u.Status.Print()
+		u.Status.uploadComplete()
+		u.Status.print()
 		currrentNumberUploaders -= 1
 	}
-	u.Status.Stop()
-	u.Status.Print()
+	u.Status.stop()
+	u.Status.print()
 	err = u.Manifest.Uploader(&u.Connection, u.outputChannel).Upload()
 	if err != nil {
 		return fmt.Errorf("Error Uploading Manifest: %s", err)

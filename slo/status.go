@@ -8,48 +8,64 @@ import (
 // Status monitors the current status of an upload.
 type Status struct {
 	outputChannel  chan string
-	UploadSize     uint
-	TotalUploads   uint
-	NumberUploaded uint
+	uploadSize     uint
+	totalUploads   uint
+	numberUploaded uint
 	uploadStarted  time.Time
 	uploadDuration time.Duration
 }
 
 // NewStatus creates a new Status with the number of individual
 // uploads and the size of each upload.
-func NewStatus(numberUploads, uploadSize uint, output chan string) *Status {
+func newStatus(numberUploads, uploadSize uint, output chan string) *Status {
 	return &Status{
 		outputChannel:  output,
-		UploadSize:     uploadSize,
-		TotalUploads:   numberUploads,
-		NumberUploaded: 0,
+		uploadSize:     uploadSize,
+		totalUploads:   numberUploads,
+		numberUploaded: 0,
 	}
 }
 
 // SetNumberUploads will change the number of uploads that the
 // Status expects unless the Start() method has already been
 // called. If it has already been started, nothing will happen.
-func (s *Status) SetNumberUploads(number uint) {
+func (s *Status) setNumberUploads(number uint) {
 	if s.uploadStarted != (time.Time{}) {
 		return
 	}
-	s.TotalUploads = number
+	s.totalUploads = number
 }
 
 // Start begins timing the upload
-func (s *Status) Start() {
+func (s *Status) start() {
 	s.uploadStarted = time.Now()
 }
 
 // Stop finalizes the duration of the upload
-func (s *Status) Stop() {
+func (s *Status) stop() {
 	s.uploadDuration = time.Since(s.uploadStarted)
 }
 
 // UploadComplete marks that one chunk has been uploaded. Call this
 // each time an upload succeeds.
-func (s *Status) UploadComplete() {
-	s.NumberUploaded += 1
+func (s *Status) uploadComplete() {
+	s.numberUploaded += 1
+}
+
+// NumberUploaded returns how many file chunks have been uploaded.
+func (s *Status) NumberUploaded() uint {
+	return s.numberUploaded
+}
+
+// TotalUploads returns how many file chunks need to be uploaded total.
+func (s *Status) TotalUploads() uint {
+	return s.totalUploads
+}
+
+// UploadSize returns the size of each file chunk (with the exception of the
+// last file chunk, which can be any size less than this).
+func (s *Status) UploadSize() uint {
+	return s.uploadSize
 }
 
 // Rate computes the observed rate of upload in bytes / second.
@@ -57,10 +73,10 @@ func (s *Status) Rate() float64 {
 	if s.uploadStarted == (time.Time{}) {
 		return 0.0
 	} else if s.uploadDuration != (time.Duration(0)) {
-		return float64(s.TotalUploads*s.UploadSize) / float64(s.uploadDuration.Seconds())
+		return float64(s.totalUploads*s.uploadSize) / float64(s.uploadDuration.Seconds())
 	}
 	elapsed := time.Since(s.uploadStarted)
-	rate := float64(s.NumberUploaded*s.UploadSize) / elapsed.Seconds()
+	rate := float64(s.numberUploaded*s.uploadSize) / elapsed.Seconds()
 	return rate
 }
 
@@ -71,14 +87,14 @@ func (s *Status) RateMBPS() float64 {
 
 // TimeRemaining estimates the amount of time remaining in the upload.
 func (s *Status) TimeRemaining() time.Duration {
-	finishedIn := int(float64((s.TotalUploads-s.NumberUploaded)*s.UploadSize) / s.Rate())
+	finishedIn := int(float64((s.totalUploads-s.numberUploaded)*s.uploadSize) / s.Rate())
 	timeRemaining := time.Duration(finishedIn) * time.Second
 	return timeRemaining
 }
 
 // PercentComplete returns much of the upload is complete.
 func (s *Status) PercentComplete() float64 {
-	return float64(s.NumberUploaded) / float64(s.TotalUploads) * 100
+	return float64(s.numberUploaded) / float64(s.totalUploads) * 100
 }
 
 // String creates a status message from the current state of the status.
@@ -99,6 +115,6 @@ func (s *Status) String() string {
 }
 
 // Print sends the current status of the upload to the output channel.
-func (s *Status) Print() {
+func (s *Status) print() {
 	s.outputChannel <- s.String()
 }
