@@ -43,8 +43,8 @@ func (s *source) ChunkData(chunkNumber uint) ([]byte, uint) {
 	return dataSlice, uint(bytesRead)
 }
 
-// ChunkReader defines a convenient way to read a data chunk
-type ChunkReader struct {
+// chunkReader defines a convenient way to read a data chunk
+type chunkReader struct {
 	file         *os.File
 	startingByte uint
 	bytesRead    uint
@@ -52,13 +52,13 @@ type ChunkReader struct {
 	bufferLength uint
 }
 
-// ChunkReader creates a reader for a given chunk number
-func (s *source) ChunkReader(chunkNumber uint) *ChunkReader {
+// chunkReader creates a reader for a given chunk number
+func (s *source) ChunkReader(chunkNumber uint) *chunkReader {
 	totalBytes := s.chunkSize
 	if chunkNumber+1 == s.numberChunks {
 		totalBytes = s.fileSize % s.chunkSize
 	}
-	return &ChunkReader{
+	return &chunkReader{
 		file:         s.file,
 		startingByte: s.chunkSize * chunkNumber,
 		bytesRead:    0,
@@ -69,24 +69,24 @@ func (s *source) ChunkReader(chunkNumber uint) *ChunkReader {
 
 // Reset sets the internal state of this ChunkReader back to when it was first created so that the
 // data chunk can be read again.
-func (c *ChunkReader) Reset() {
+func (c *chunkReader) Reset() {
 	c.bytesRead = 0
 }
 
 // HasUnreadData returns whether this ChunkReader has returned all of its data (via the Read() method)
 // or whether it has more. When this returns false, do not call Read().
-func (c *ChunkReader) HasUnreadData() bool {
+func (c *chunkReader) HasUnreadData() bool {
 	return c.bytesRead < c.totalBytes
 }
 
 // String converts the ChunkReader's current state into a String.
-func (c *ChunkReader) String() string {
+func (c *chunkReader) String() string {
 	return fmt.Sprintf("starting: %d\ttotal: %d\tread: %d\tbuffer: %d", c.startingByte, c.totalBytes, c.bytesRead, c.bufferLength)
 }
 
 // Read returns a byte slice of the file chunk's content until c.HasUnreadData() is false.
 // Call it within a loop to get all of the data from this file chunk.
-func (c *ChunkReader) Read() []byte {
+func (c *chunkReader) Read() []byte {
 	buffer := make([]byte, c.bufferLength)
 	bufferLength := uint(len(buffer))
 	if bytesRemaining := c.totalBytes - c.bytesRead; bytesRemaining <= bufferLength {

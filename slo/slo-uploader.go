@@ -24,7 +24,7 @@ type Uploader struct {
 	Manifest      *Manifest
 	Source        *source
 	Connection    swift.Connection
-	Inventory     *Inventory
+	Inventory     *inventory
 	MaxUploaders  uint
 }
 
@@ -88,7 +88,7 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 		Manifest:      sloManifest,
 		Connection:    connection,
 		Source:        newSource(source, chunkSize, numChunks),
-		Inventory:     NewInventory(sloManifest, &connection, !onlyMissing, outputChannel),
+		Inventory:     newInventory(sloManifest, &connection, !onlyMissing, outputChannel),
 		MaxUploaders:  maxUploads,
 	}, nil
 }

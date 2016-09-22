@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-type Inventory struct {
+type inventory struct {
 	uploadNeeded       []bool
 	numberUploadNeeded uint
 	manifest           *Manifest
@@ -17,8 +17,8 @@ type Inventory struct {
 	output             chan string
 }
 
-func NewInventory(manifest *Manifest, connection *swift.Connection, overwrite bool, output chan string) *Inventory {
-	return &Inventory{
+func newInventory(manifest *Manifest, connection *swift.Connection, overwrite bool, output chan string) *inventory {
+	return &inventory{
 		uploadNeeded:       make([]bool, manifest.NumberChunks),
 		numberUploadNeeded: 0,
 		ready:              false,
@@ -31,7 +31,7 @@ func NewInventory(manifest *Manifest, connection *swift.Connection, overwrite bo
 
 // TakeInventory readies the inventory for use. After this, the ShouldUpload method will
 // return whether a given chunk needs upload again.
-func (i *Inventory) TakeInventory() error {
+func (i *inventory) TakeInventory() error {
 	if i.overwrite {
 		i.markAll()
 		return nil
@@ -68,7 +68,7 @@ func (i *Inventory) TakeInventory() error {
 }
 
 // markAll marks all chunks as needing upload.
-func (i *Inventory) markAll() {
+func (i *inventory) markAll() {
 	for k := range i.uploadNeeded {
 		i.uploadNeeded[k] = true
 	}
@@ -78,7 +78,7 @@ func (i *Inventory) markAll() {
 
 // UploadsNeeded returns how many chunks need to be uploaded. Will panic if called before
 // TakeInventory().
-func (i *Inventory) UploadsNeeded() uint {
+func (i *inventory) UploadsNeeded() uint {
 	if !i.ready {
 		panic(fmt.Errorf("UploadsNeeded() called before TakeInventory() on %t", i))
 	}
@@ -87,7 +87,7 @@ func (i *Inventory) UploadsNeeded() uint {
 
 // ShouldUpload returns whether the chunkNumber needs to be uploaded. Will panic if
 // called before TakeInventory or if an invalid chunkNumber is provided.
-func (i *Inventory) ShouldUpload(chunkNumber uint) bool {
+func (i *inventory) ShouldUpload(chunkNumber uint) bool {
 	if !i.ready {
 		panic(fmt.Errorf("ShouldUpload() called before TakeInventory() on %t", i))
 	} else if chunkNumber >= uint(len(i.uploadNeeded)) {
