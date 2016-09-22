@@ -12,13 +12,13 @@ import (
 // ManifestUploader handles sending manifest data to Object storage
 type ManifestUploader struct {
 	output     chan string
-	manifest   *Manifest
+	manifest   *manifest
 	connection *swift.Connection
 }
 
 // NewManifestUploader creates a manifest uploader that will send the provided
 // manifest's JSON to the provided connection
-func NewManifestUploader(manifest *Manifest, connection *swift.Connection, output chan string) *ManifestUploader {
+func NewManifestUploader(manifest *manifest, connection *swift.Connection, output chan string) *ManifestUploader {
 	return &ManifestUploader{
 		output:     output,
 		manifest:   manifest,

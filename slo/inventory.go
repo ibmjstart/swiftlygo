@@ -10,14 +10,14 @@ import (
 type inventory struct {
 	uploadNeeded       []bool
 	numberUploadNeeded uint
-	manifest           *Manifest
+	manifest           *manifest
 	connection         *swift.Connection
 	overwrite          bool
 	ready              bool
 	output             chan string
 }
 
-func newInventory(manifest *Manifest, connection *swift.Connection, overwrite bool, output chan string) *inventory {
+func newInventory(manifest *manifest, connection *swift.Connection, overwrite bool, output chan string) *inventory {
 	return &inventory{
 		uploadNeeded:       make([]bool, manifest.NumberChunks),
 		numberUploadNeeded: 0,

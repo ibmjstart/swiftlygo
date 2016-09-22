@@ -15,8 +15,8 @@ const (
 	MAX_NUMBER_CHUNKS uint = 1000
 )
 
-// SloManifest defines the data structure of the SLO manifest
-type Manifest struct {
+// manifest defines the data structure of the SLO manifest
+type manifest struct {
 	Chunks        []chunk
 	NumberChunks  uint
 	ChunkSize     uint
@@ -26,7 +26,7 @@ type Manifest struct {
 }
 
 // NewManifest creates an SLO Manifest object.
-func NewManifest(name, containerName string, numberChunks, chunkSize uint) (*Manifest, error) {
+func newManifest(name, containerName string, numberChunks, chunkSize uint) (*manifest, error) {
 	if numberChunks > MAX_NUMBER_CHUNKS {
 		return nil, fmt.Errorf(
 			"SLO Manifests can only have %d chunks, %d given",
@@ -42,7 +42,7 @@ func NewManifest(name, containerName string, numberChunks, chunkSize uint) (*Man
 	} else if len(containerName) < 1 {
 		return nil, fmt.Errorf("Object Storage Container names cannot be the empty string.")
 	}
-	return &Manifest{
+	return &manifest{
 		Chunks:        make([]chunk, numberChunks),
 		NumberChunks:  numberChunks,
 		ChunkSize:     chunkSize,
@@ -53,23 +53,23 @@ func NewManifest(name, containerName string, numberChunks, chunkSize uint) (*Man
 }
 
 // getChunkNameTemplate returns the template for the names of chunks of this file.
-func (m *Manifest) getChunkNameTemplate() string {
+func (m *manifest) getChunkNameTemplate() string {
 	return m.Name + "-part-%s-chunk-size-" + strconv.Itoa(int(m.ChunkSize))
 }
 
 // getNameForChunk returns the object storage name for this file chunk.
-func (m *Manifest) getNameForChunk(chunkNumber uint) string {
+func (m *manifest) getNameForChunk(chunkNumber uint) string {
 	return fmt.Sprintf(m.getChunkNameTemplate(), fmt.Sprintf("%04d", chunkNumber))
 }
 
 // getFileNameRegex returns a regular expression for extracting the chunk numbers
 // out of chunk file names for the current SLO.
-func (m *Manifest) GetChunkNameRegex() string {
+func (m *manifest) GetChunkNameRegex() string {
 	return fmt.Sprintf(m.getChunkNameTemplate(), "([0-9]+)")
 }
 
 // Add inserts the information for a given chunk into the manifest.
-func (m *Manifest) Add(chunkNumber uint, hash string, numberBytes uint) error {
+func (m *manifest) Add(chunkNumber uint, hash string, numberBytes uint) error {
 	if chunkNumber >= m.NumberChunks {
 		return fmt.Errorf("Tried to add chunk at index %d in manifest of size %d", chunkNumber, m.NumberChunks)
 	}
@@ -78,7 +78,7 @@ func (m *Manifest) Add(chunkNumber uint, hash string, numberBytes uint) error {
 }
 
 // Get returns the data for a given Chunk.
-func (m *Manifest) Get(chunkNumber uint) *chunk {
+func (m *manifest) Get(chunkNumber uint) *chunk {
 	if chunkNumber >= m.NumberChunks {
 		return nil
 	}
@@ -86,29 +86,29 @@ func (m *Manifest) Get(chunkNumber uint) *chunk {
 }
 
 // Mark this manifest as completely finished.
-func (m *Manifest) MarkComplete() {
+func (m *manifest) MarkComplete() {
 	m.complete = true
 }
 
 // Return whether this manifest is ready for export.
-func (m *Manifest) IsComplete() bool {
+func (m *manifest) IsComplete() bool {
 	return m.complete
 }
 
 // MarshalJSON generates the JSON representation of the Manifest file that OpenStack
 // expects.
-func (m *Manifest) MarshalJSON() ([]byte, error) {
+func (m *manifest) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.Chunks)
 }
 
 // Builder creates and returns a builder for this manifest that will populate
 // it with data from the provided source.
-func (m *Manifest) Builder(source *source, output chan string) *ManifestBuilder {
+func (m *manifest) Builder(source *source, output chan string) *ManifestBuilder {
 	return NewBuilder(m, source, output)
 }
 
 // Uploader creates and returns an uploader for this manifest to the
 // provided swift connection.
-func (m *Manifest) Uploader(connection *swift.Connection, output chan string) *ManifestUploader {
+func (m *manifest) Uploader(connection *swift.Connection, output chan string) *ManifestUploader {
 	return NewManifestUploader(m, connection, output)
 }

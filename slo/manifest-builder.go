@@ -8,7 +8,7 @@ import (
 // ManifestBuilder fills out Manifest structs so that they can generate
 // the SLO Manifest JSON.
 type ManifestBuilder struct {
-	manifest        *Manifest
+	manifest        *manifest
 	source          *source
 	chunksCompleted chan uint
 	output          chan string
@@ -16,7 +16,7 @@ type ManifestBuilder struct {
 
 // NewBuilder creates a manifest builder using that will fill out the
 // provided manifest with the data from the provided source.
-func NewBuilder(manifest *Manifest, source *source, output chan string) *ManifestBuilder {
+func NewBuilder(manifest *manifest, source *source, output chan string) *ManifestBuilder {
 	return &ManifestBuilder{
 		output:          output,
 		manifest:        manifest,

@@ -21,7 +21,7 @@ const maxChunkSize uint = 1000 * 1000 * 1000 * 5
 type Uploader struct {
 	outputChannel chan string
 	Status        *Status
-	Manifest      *Manifest
+	Manifest      *manifest
 	Source        *source
 	Connection    swift.Connection
 	Inventory     *inventory
@@ -76,7 +76,7 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 	if err != nil {
 		return nil, err
 	}
-	sloManifest, err := NewManifest(object, container, numChunks, chunkSize)
+	sloManifest, err := newManifest(object, container, numChunks, chunkSize)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create SLO Manifest: %s", err)
 	}
