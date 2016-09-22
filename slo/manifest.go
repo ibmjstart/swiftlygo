@@ -17,7 +17,7 @@ const (
 
 // SloManifest defines the data structure of the SLO manifest
 type Manifest struct {
-	Chunks        []Chunk
+	Chunks        []chunk
 	NumberChunks  uint
 	ChunkSize     uint
 	Name          string
@@ -43,7 +43,7 @@ func NewManifest(name, containerName string, numberChunks, chunkSize uint) (*Man
 		return nil, fmt.Errorf("Object Storage Container names cannot be the empty string.")
 	}
 	return &Manifest{
-		Chunks:        make([]Chunk, numberChunks),
+		Chunks:        make([]chunk, numberChunks),
 		NumberChunks:  numberChunks,
 		ChunkSize:     chunkSize,
 		Name:          name,
@@ -73,12 +73,12 @@ func (m *Manifest) Add(chunkNumber uint, hash string, numberBytes uint) error {
 	if chunkNumber >= m.NumberChunks {
 		return fmt.Errorf("Tried to add chunk at index %d in manifest of size %d", chunkNumber, m.NumberChunks)
 	}
-	m.Chunks[chunkNumber] = NewChunk(m.getNameForChunk(chunkNumber), m.ContainerName, hash, numberBytes)
+	m.Chunks[chunkNumber] = newChunk(m.getNameForChunk(chunkNumber), m.ContainerName, hash, numberBytes)
 	return nil
 }
 
 // Get returns the data for a given Chunk.
-func (m *Manifest) Get(chunkNumber uint) *Chunk {
+func (m *Manifest) Get(chunkNumber uint) *chunk {
 	if chunkNumber >= m.NumberChunks {
 		return nil
 	}
