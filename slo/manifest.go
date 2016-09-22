@@ -3,6 +3,7 @@ package slo
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ncw/swift"
 	"strconv"
 )
 
@@ -98,4 +99,16 @@ func (m *Manifest) IsComplete() bool {
 // expects.
 func (m *Manifest) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.Chunks)
+}
+
+// Builder creates and returns a builder for this manifest that will populate
+// it with data from the provided source.
+func (m *Manifest) Builder(source *Source) *ManifestBuilder {
+	return NewBuilder(m, source)
+}
+
+// Uploader creates and returns an uploader for this manifest to the
+// provided swift connection.
+func (m *Manifest) Uploader(connection *swift.Connection) *ManifestUploader {
+	return NewManifestUploader(m, connection)
 }
