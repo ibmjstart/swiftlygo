@@ -103,12 +103,12 @@ func (m *Manifest) MarshalJSON() ([]byte, error) {
 
 // Builder creates and returns a builder for this manifest that will populate
 // it with data from the provided source.
-func (m *Manifest) Builder(source *Source) *ManifestBuilder {
-	return NewBuilder(m, source)
+func (m *Manifest) Builder(source *Source, output chan string) *ManifestBuilder {
+	return NewBuilder(m, source, output)
 }
 
 // Uploader creates and returns an uploader for this manifest to the
 // provided swift connection.
-func (m *Manifest) Uploader(connection *swift.Connection) *ManifestUploader {
-	return NewManifestUploader(m, connection)
+func (m *Manifest) Uploader(connection *swift.Connection, output chan string) *ManifestUploader {
+	return NewManifestUploader(m, connection, output)
 }

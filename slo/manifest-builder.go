@@ -3,7 +3,6 @@ package slo
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
 )
 
 // ManifestBuilder fills out Manifest structs so that they can generate
@@ -12,12 +11,14 @@ type ManifestBuilder struct {
 	manifest        *Manifest
 	source          *Source
 	chunksCompleted chan uint
+	output          chan string
 }
 
 // NewBuilder creates a manifest builder using that will fill out the
 // provided manifest with the data from the provided source.
-func NewBuilder(manifest *Manifest, source *Source) *ManifestBuilder {
+func NewBuilder(manifest *Manifest, source *Source, output chan string) *ManifestBuilder {
 	return &ManifestBuilder{
+		output:          output,
 		manifest:        manifest,
 		source:          source,
 		chunksCompleted: make(chan uint, manifest.NumberChunks),
@@ -35,13 +36,14 @@ func (m *ManifestBuilder) Start() chan uint {
 // Build sequentially prepares each data chunk and adds its information
 // to the Manifest.
 func (m *ManifestBuilder) Build() {
+	m.output <- "Starting chunk pre-hash"
 	var i uint
 	for i = 0; i < m.manifest.NumberChunks; i++ {
 		m.prepare(i)
 		m.chunksCompleted <- i
 	}
 	m.manifest.MarkComplete()
-	fmt.Println("Chunk pre-hash complete")
+	m.output <- "Chunk pre-hash complete"
 	close(m.chunksCompleted)
 }
 

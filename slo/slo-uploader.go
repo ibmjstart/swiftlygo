@@ -3,6 +3,7 @@ package slo
 import (
 	"fmt"
 	"github.com/ncw/swift"
+	"io"
 	"math"
 	"os"
 	"time"
@@ -18,12 +19,13 @@ const maxChunkSize uint = 1000 * 1000 * 1000 * 5
 
 // Uploader uploads a file to object storage
 type Uploader struct {
-	Status       *Status
-	Manifest     *Manifest
-	Source       *Source
-	Connection   swift.Connection
-	Inventory    *Inventory
-	MaxUploaders uint
+	outputChannel chan string
+	Status        *Status
+	Manifest      *Manifest
+	Source        *Source
+	Connection    swift.Connection
+	Inventory     *Inventory
+	MaxUploaders  uint
 }
 
 func getSize(file *os.File) (uint, error) {
@@ -61,7 +63,16 @@ func getNumberChunks(file *os.File, chunkSize uint) (numChunks uint, e error) {
 }
 
 func NewUploader(connection swift.Connection, chunkSize uint, container string,
-	object string, source *os.File, maxUploads uint, onlyMissing bool) (*Uploader, error) {
+	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*Uploader, error) {
+
+	outputChannel := make(chan string, 10)
+	// Asynchronously print everything that comes in on this channel
+	go func(output io.Writer, incoming chan string) {
+		for message := range incoming {
+			fmt.Fprintln(output, message)
+		}
+	}(outputFile, outputChannel)
+	outputChannel <- "testing channel"
 
 	numChunks, err := getNumberChunks(source, chunkSize)
 	if err != nil {
@@ -71,20 +82,22 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create SLO Manifest: %s", err)
 	}
+
 	return &Uploader{
-		Status:       NewStatus(numChunks, chunkSize),
-		Manifest:     sloManifest,
-		Connection:   connection,
-		Source:       NewSource(source, chunkSize, numChunks),
-		Inventory:    NewInventory(sloManifest, &connection, !onlyMissing),
-		MaxUploaders: maxUploads,
+		outputChannel: outputChannel,
+		Status:        NewStatus(numChunks, chunkSize, outputChannel),
+		Manifest:      sloManifest,
+		Connection:    connection,
+		Source:        NewSource(source, chunkSize, numChunks),
+		Inventory:     NewInventory(sloManifest, &connection, !onlyMissing),
+		MaxUploaders:  maxUploads,
 	}, nil
 }
 
 // Upload uploads the sloUploader's source file to object storage
 func (u *Uploader) Upload() error {
 	// start hashing chunks
-	chunkPreparedChannel := u.Manifest.Builder(u.Source).Start()
+	chunkPreparedChannel := u.Manifest.Builder(u.Source, u.outputChannel).Start()
 
 	// prepare inventory
 	err := u.Inventory.TakeInventory()
@@ -117,7 +130,7 @@ func (u *Uploader) Upload() error {
 	}
 	u.Status.Stop()
 	u.Status.Print()
-	err = u.Manifest.Uploader(&u.Connection).Upload()
+	err = u.Manifest.Uploader(&u.Connection, u.outputChannel).Upload()
 	if err != nil {
 		return fmt.Errorf("Error Uploading Manifest: %s", err)
 	}
@@ -130,15 +143,14 @@ func (u *Uploader) uploadDataForChunk(chunkNumber uint, chunkCompleteChannel cha
 	err := u.attemptDataUpload(chunkNumber)
 	errCount, maxErrors := 0, 5
 	for err != nil && errCount < maxErrors {
-		fmt.Fprintf(os.Stderr, "Failed to upload chunk %d (error: %s), retrying...\n", chunkNumber, err)
+		u.outputChannel <- fmt.Sprintf("Failed to upload chunk %d (error: %s), retrying...", chunkNumber, err)
 		errCount += 1
 		time.Sleep(time.Duration(1<<uint(errCount)) * time.Second) // wait 2^errCount seconds
 		err = u.attemptDataUpload(chunkNumber)
 	}
 
 	if errCount >= maxErrors {
-		fmt.Fprintf(
-			os.Stderr,
+		u.outputChannel <- fmt.Sprintf(
 			"Failed to upload chunk %d, max retries exceeded. Upload again with the --only-missing flag.",
 			chunkNumber)
 	}

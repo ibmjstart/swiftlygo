@@ -5,13 +5,9 @@ import (
 	"time"
 )
 
-type Manager struct {
-	NeedsUpload       []bool
-	NumberNeedsUpload uint
-}
-
 // Status monitors the current status of an upload.
 type Status struct {
+	outputChannel  chan string
 	UploadSize     uint
 	TotalUploads   uint
 	NumberUploaded uint
@@ -21,8 +17,9 @@ type Status struct {
 
 // NewStatus creates a new Status with the number of individual
 // uploads and the size of each upload.
-func NewStatus(numberUploads, uploadSize uint) *Status {
+func NewStatus(numberUploads, uploadSize uint, output chan string) *Status {
 	return &Status{
+		outputChannel:  output,
 		UploadSize:     uploadSize,
 		TotalUploads:   numberUploads,
 		NumberUploaded: 0,
@@ -93,5 +90,5 @@ func (s *Status) String() string {
 }
 
 func (s *Status) Print() {
-	fmt.Println(s)
+	s.outputChannel <- s.String()
 }

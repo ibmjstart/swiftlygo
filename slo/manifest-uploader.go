@@ -11,14 +11,16 @@ import (
 
 // ManifestUploader handles sending manifest data to Object storage
 type ManifestUploader struct {
+	output     chan string
 	manifest   *Manifest
 	connection *swift.Connection
 }
 
 // NewManifestUploader creates a manifest uploader that will send the provided
 // manifest's JSON to the provided connection
-func NewManifestUploader(manifest *Manifest, connection *swift.Connection) *ManifestUploader {
+func NewManifestUploader(manifest *Manifest, connection *swift.Connection, output chan string) *ManifestUploader {
 	return &ManifestUploader{
+		output:     output,
 		manifest:   manifest,
 		connection: connection,
 	}
@@ -40,7 +42,7 @@ func (m *ManifestUploader) upload() error {
 	}
 	targetUrl := m.connection.StorageUrl + "/" + m.manifest.ContainerName + "/" + m.manifest.Name + "?multipart-manifest=put"
 
-	fmt.Println("Beginning SLO Manifest Upload...")
+	m.output <- "Beginning SLO Manifest Upload..."
 
 	request, err := http.NewRequest(http.MethodPut, targetUrl, bytes.NewReader(manifestJSON))
 	if err != nil {
@@ -54,5 +56,6 @@ func (m *ManifestUploader) upload() error {
 	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return fmt.Errorf("Failed to upload manifest with status %d", response.StatusCode)
 	}
+	m.output <- "SLO Manifest Upload Complete"
 	return nil
 }
