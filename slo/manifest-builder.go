@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 )
 
-// ManifestBuilder fills out Manifest structs so that they can generate
+// manifestBuilder fills out Manifest structs so that they can generate
 // the SLO Manifest JSON.
-type ManifestBuilder struct {
+type manifestBuilder struct {
 	manifest        *manifest
 	source          *source
 	chunksCompleted chan uint
@@ -16,8 +16,8 @@ type ManifestBuilder struct {
 
 // NewBuilder creates a manifest builder using that will fill out the
 // provided manifest with the data from the provided source.
-func NewBuilder(manifest *manifest, source *source, output chan string) *ManifestBuilder {
-	return &ManifestBuilder{
+func newBuilder(manifest *manifest, source *source, output chan string) *manifestBuilder {
+	return &manifestBuilder{
 		output:          output,
 		manifest:        manifest,
 		source:          source,
@@ -28,14 +28,14 @@ func NewBuilder(manifest *manifest, source *source, output chan string) *Manifes
 // Start asynchronously runs Build() on the manifest and returns a channel
 // on which it will send the indicies of chunks when it has finished with
 // them.
-func (m *ManifestBuilder) Start() chan uint {
+func (m *manifestBuilder) Start() chan uint {
 	go m.Build()
 	return m.chunksCompleted
 }
 
 // Build sequentially prepares each data chunk and adds its information
 // to the Manifest.
-func (m *ManifestBuilder) Build() {
+func (m *manifestBuilder) Build() {
 	m.output <- "Starting chunk pre-hash"
 	var i uint
 	for i = 0; i < m.manifest.NumberChunks; i++ {
@@ -49,7 +49,7 @@ func (m *ManifestBuilder) Build() {
 
 // prepare hashes a single data chunk and adds its information to
 // the manifest.
-func (m *ManifestBuilder) prepare(chunkNumber uint) {
+func (m *manifestBuilder) prepare(chunkNumber uint) {
 	dataSlice, bytesRead := m.source.ChunkData(chunkNumber)
 	hashBytes := md5.Sum(dataSlice)
 	hash := hex.EncodeToString(hashBytes[:])
