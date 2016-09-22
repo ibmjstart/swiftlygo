@@ -74,6 +74,15 @@ func (i *Inventory) markAll() {
 	i.ready = true
 }
 
+// UploadsNeeded returns how many chunks need to be uploaded. Will panic if called before
+// TakeInventory().
+func (i *Inventory) UploadsNeeded() uint {
+	if !i.ready {
+		panic(fmt.Errorf("UploadsNeeded() called before TakeInventory() on %t", i))
+	}
+	return i.numberUploadNeeded
+}
+
 // ShouldUpload returns whether the chunkNumber needs to be uploaded. Will panic if
 // called before TakeInventory or if an invalid chunkNumber is provided.
 func (i *Inventory) ShouldUpload(chunkNumber uint) bool {
