@@ -40,7 +40,9 @@ func (m *ManifestBuilder) Build() {
 		m.prepare(i)
 		m.chunksCompleted <- i
 	}
+	m.manifest.MarkComplete()
 	fmt.Println("Chunk pre-hash complete")
+	close(m.chunksCompleted)
 }
 
 // prepare hashes a single data chunk and adds its information to

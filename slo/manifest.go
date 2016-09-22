@@ -21,6 +21,7 @@ type Manifest struct {
 	ChunkSize     uint
 	Name          string
 	ContainerName string
+	complete      bool
 }
 
 // NewManifest creates an SLO Manifest object.
@@ -46,6 +47,7 @@ func NewManifest(name, containerName string, numberChunks, chunkSize uint) (*Man
 		ChunkSize:     chunkSize,
 		Name:          name,
 		ContainerName: containerName,
+		complete:      false,
 	}, nil
 }
 
@@ -80,6 +82,16 @@ func (m *Manifest) Get(chunkNumber uint) *Chunk {
 		return nil
 	}
 	return &m.Chunks[chunkNumber]
+}
+
+// Mark this manifest as completely finished.
+func (m *Manifest) MarkComplete() {
+	m.complete = true
+}
+
+// Return whether this manifest is ready for export.
+func (m *Manifest) IsComplete() bool {
+	return m.complete
 }
 
 // MarshalJSON generates the JSON representation of the Manifest file that OpenStack
