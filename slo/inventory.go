@@ -14,9 +14,10 @@ type Inventory struct {
 	connection         *swift.Connection
 	overwrite          bool
 	ready              bool
+	output             chan string
 }
 
-func NewInventory(manifest *Manifest, connection *swift.Connection, overwrite bool) *Inventory {
+func NewInventory(manifest *Manifest, connection *swift.Connection, overwrite bool, output chan string) *Inventory {
 	return &Inventory{
 		uploadNeeded:       make([]bool, manifest.NumberChunks),
 		numberUploadNeeded: 0,
@@ -24,6 +25,7 @@ func NewInventory(manifest *Manifest, connection *swift.Connection, overwrite bo
 		manifest:           manifest,
 		connection:         connection,
 		overwrite:          overwrite,
+		output:             output,
 	}
 }
 
@@ -58,7 +60,7 @@ func (i *Inventory) TakeInventory() error {
 		numberFilesAlreadyUploaded++
 	}
 	i.numberUploadNeeded -= uint(numberFilesAlreadyUploaded)
-	fmt.Printf(
+	i.output <- fmt.Sprintf(
 		"%d chunks need uploading. Additionally, manifest file is always re-uploaded.\n",
 		i.numberUploadNeeded)
 	i.ready = true

@@ -46,10 +46,9 @@ func getNumberChunks(file *os.File, chunkSize uint) (numChunks uint, e error) {
 		return 0, err
 	}
 	numChunks = computeNumChunks(dataSize, chunkSize)
-	fmt.Printf("file has size %d, will be split into %d chunks of size %d bytes\n", dataSize, numChunks, chunkSize)
 	if numChunks > maxFileChunks || chunkSize > maxChunkSize {
 		minimumChunkSize := uint(math.Ceil(float64(dataSize) / float64(maxFileChunks)))
-		return 0, fmt.Errorf("SLO manifests can only have a maxiumum of %d file chunks with a maximum size of %d bytes.\nPlease try again with a chunk size >= %d and <= %d\n",
+		return 0, fmt.Errorf("SLO manifests can only have a maxiumum of %d file chunks with a maximum size of %d bytes.\nPlease try again with a chunk size >= %d and <= %d",
 			maxFileChunks,
 			maxChunkSize,
 			minimumChunkSize,
@@ -72,7 +71,6 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 			fmt.Fprintln(output, message)
 		}
 	}(outputFile, outputChannel)
-	outputChannel <- "testing channel"
 
 	numChunks, err := getNumberChunks(source, chunkSize)
 	if err != nil {
@@ -83,13 +81,14 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 		return nil, fmt.Errorf("Failed to create SLO Manifest: %s", err)
 	}
 
+	outputChannel <- fmt.Sprintf("file will be split into %d chunks of size %d bytes", numChunks, chunkSize)
 	return &Uploader{
 		outputChannel: outputChannel,
 		Status:        NewStatus(numChunks, chunkSize, outputChannel),
 		Manifest:      sloManifest,
 		Connection:    connection,
 		Source:        NewSource(source, chunkSize, numChunks),
-		Inventory:     NewInventory(sloManifest, &connection, !onlyMissing),
+		Inventory:     NewInventory(sloManifest, &connection, !onlyMissing, outputChannel),
 		MaxUploaders:  maxUploads,
 	}, nil
 }

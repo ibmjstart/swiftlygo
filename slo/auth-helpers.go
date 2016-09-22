@@ -44,6 +44,5 @@ func Authenticate(username, apiKey, authURL, domain, tenant string) (swift.Conne
 	if err != nil {
 		return connection, fmt.Errorf("Failed to authenticate with object storage: %s", err)
 	}
-	fmt.Println("Authenticated!")
 	return connection, nil
 }
