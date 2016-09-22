@@ -22,7 +22,7 @@ type Uploader struct {
 	outputChannel chan string
 	Status        *Status
 	Manifest      *Manifest
-	Source        *Source
+	Source        *source
 	Connection    swift.Connection
 	Inventory     *Inventory
 	MaxUploaders  uint
@@ -87,7 +87,7 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 		Status:        newStatus(numChunks, chunkSize, outputChannel),
 		Manifest:      sloManifest,
 		Connection:    connection,
-		Source:        NewSource(source, chunkSize, numChunks),
+		Source:        newSource(source, chunkSize, numChunks),
 		Inventory:     NewInventory(sloManifest, &connection, !onlyMissing, outputChannel),
 		MaxUploaders:  maxUploads,
 	}, nil

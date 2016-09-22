@@ -9,7 +9,7 @@ import (
 const defaultBufferLength = mebibyte
 
 // Source wraps a file to make reading it in chunks easier
-type Source struct {
+type source struct {
 	file         *os.File
 	fileSize     uint
 	chunkSize    uint
@@ -18,12 +18,12 @@ type Source struct {
 
 // NewSource creates a source out of a file so that it can easily be
 // read in chunks.
-func NewSource(file *os.File, chunkSize, numberChunks uint) *Source {
+func newSource(file *os.File, chunkSize, numberChunks uint) *source {
 	info, err := file.Stat()
 	if err != nil {
 		panic(err)
 	}
-	return &Source{
+	return &source{
 		file:         file,
 		fileSize:     uint(info.Size()),
 		chunkSize:    chunkSize,
@@ -33,7 +33,7 @@ func NewSource(file *os.File, chunkSize, numberChunks uint) *Source {
 
 // ChunkData gets the raw data for a given chunk of a file. If there's an error
 // reading the file, it will panic.
-func (s *Source) ChunkData(chunkNumber uint) ([]byte, uint) {
+func (s *source) ChunkData(chunkNumber uint) ([]byte, uint) {
 	data := make([]byte, s.chunkSize)
 	bytesRead, err := s.file.ReadAt(data, int64(chunkNumber*s.chunkSize))
 	if err != nil && err != io.EOF {
@@ -53,7 +53,7 @@ type ChunkReader struct {
 }
 
 // ChunkReader creates a reader for a given chunk number
-func (s *Source) ChunkReader(chunkNumber uint) *ChunkReader {
+func (s *source) ChunkReader(chunkNumber uint) *ChunkReader {
 	totalBytes := s.chunkSize
 	if chunkNumber+1 == s.numberChunks {
 		totalBytes = s.fileSize % s.chunkSize

@@ -103,7 +103,7 @@ func (m *Manifest) MarshalJSON() ([]byte, error) {
 
 // Builder creates and returns a builder for this manifest that will populate
 // it with data from the provided source.
-func (m *Manifest) Builder(source *Source, output chan string) *ManifestBuilder {
+func (m *Manifest) Builder(source *source, output chan string) *ManifestBuilder {
 	return NewBuilder(m, source, output)
 }
 
