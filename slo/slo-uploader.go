@@ -21,11 +21,11 @@ const maxChunkSize uint = 1000 * 1000 * 1000 * 5
 type Uploader struct {
 	outputChannel chan string
 	Status        *Status
-	Manifest      *manifest
-	Source        *source
-	Connection    swift.Connection
-	Inventory     *inventory
-	MaxUploaders  uint
+	manifest      *manifest
+	source        *source
+	connection    swift.Connection
+	inventory     *inventory
+	maxUploaders  uint
 }
 
 func getSize(file *os.File) (uint, error) {
@@ -85,37 +85,37 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 	return &Uploader{
 		outputChannel: outputChannel,
 		Status:        newStatus(numChunks, chunkSize, outputChannel),
-		Manifest:      sloManifest,
-		Connection:    connection,
-		Source:        newSource(source, chunkSize, numChunks),
-		Inventory:     newInventory(sloManifest, &connection, !onlyMissing, outputChannel),
-		MaxUploaders:  maxUploads,
+		manifest:      sloManifest,
+		connection:    connection,
+		source:        newSource(source, chunkSize, numChunks),
+		inventory:     newInventory(sloManifest, &connection, !onlyMissing, outputChannel),
+		maxUploaders:  maxUploads,
 	}, nil
 }
 
 // Upload uploads the sloUploader's source file to object storage
 func (u *Uploader) Upload() error {
 	// start hashing chunks
-	chunkPreparedChannel := u.Manifest.Builder(u.Source, u.outputChannel).Start()
+	chunkPreparedChannel := u.manifest.Builder(u.source, u.outputChannel).Start()
 
 	// prepare inventory
-	err := u.Inventory.TakeInventory()
+	err := u.inventory.TakeInventory()
 	if err != nil {
 		return fmt.Errorf("Error taking inventory: %s", err)
 	}
-	u.Status.setNumberUploads(u.Inventory.UploadsNeeded())
+	u.Status.setNumberUploads(u.inventory.UploadsNeeded())
 	u.Status.start()
-	chunkCompleteChannel := make(chan int, u.MaxUploaders)
+	chunkCompleteChannel := make(chan int, u.maxUploaders)
 	var currrentNumberUploaders uint = 0
 	for readyChunkNumber := range chunkPreparedChannel {
-		if currrentNumberUploaders >= u.MaxUploaders {
+		if currrentNumberUploaders >= u.maxUploaders {
 			// Wait for one to finish before starting a new one
 			<-chunkCompleteChannel
 			u.Status.uploadComplete()
 			currrentNumberUploaders -= 1
 		}
 		// Begin new upload
-		if u.Inventory.ShouldUpload(readyChunkNumber) {
+		if u.inventory.ShouldUpload(readyChunkNumber) {
 			go u.uploadDataForChunk(readyChunkNumber, chunkCompleteChannel)
 			currrentNumberUploaders += 1
 		}
@@ -129,7 +129,7 @@ func (u *Uploader) Upload() error {
 	}
 	u.Status.stop()
 	u.Status.print()
-	err = u.Manifest.Uploader(&u.Connection, u.outputChannel).Upload()
+	err = u.manifest.Uploader(&u.connection, u.outputChannel).Upload()
 	if err != nil {
 		return fmt.Errorf("Error Uploading Manifest: %s", err)
 	}
@@ -159,11 +159,11 @@ func (u *Uploader) uploadDataForChunk(chunkNumber uint, chunkCompleteChannel cha
 // attemptDataUpload makes a single attempt to upload a given file chunk and returns an error
 // if it was unsuccessful.
 func (u *Uploader) attemptDataUpload(chunkNumber uint) error {
-	sloChunk := u.Manifest.Get(chunkNumber)
+	sloChunk := u.manifest.Get(chunkNumber)
 	chunkName := sloChunk.Name()
 
-	chunkReader := u.Source.ChunkReader(chunkNumber)
-	fileCreator, err := u.Connection.ObjectCreate(sloChunk.Container(), sloChunk.Name(), true, sloChunk.Hash(), "", nil)
+	chunkReader := u.source.ChunkReader(chunkNumber)
+	fileCreator, err := u.connection.ObjectCreate(sloChunk.Container(), sloChunk.Name(), true, sloChunk.Hash(), "", nil)
 	if err != nil {
 		return fmt.Errorf("Failed to create upload for chunk %s: %s", chunkName, err)
 	}
