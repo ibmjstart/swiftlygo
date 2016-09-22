@@ -9,17 +9,17 @@ import (
 	"strconv"
 )
 
-// ManifestUploader handles sending manifest data to Object storage
-type ManifestUploader struct {
+// manifestUploader handles sending manifest data to Object storage
+type manifestUploader struct {
 	output     chan string
 	manifest   *manifest
 	connection *swift.Connection
 }
 
-// NewManifestUploader creates a manifest uploader that will send the provided
+// newManifestUploader creates a manifest uploader that will send the provided
 // manifest's JSON to the provided connection
-func NewManifestUploader(manifest *manifest, connection *swift.Connection, output chan string) *ManifestUploader {
-	return &ManifestUploader{
+func newManifestUploader(manifest *manifest, connection *swift.Connection, output chan string) *manifestUploader {
+	return &manifestUploader{
 		output:     output,
 		manifest:   manifest,
 		connection: connection,
@@ -27,7 +27,7 @@ func NewManifestUploader(manifest *manifest, connection *swift.Connection, outpu
 }
 
 // Upload sends the manifest to object storage if it is ready.
-func (m *ManifestUploader) Upload() error {
+func (m *manifestUploader) Upload() error {
 	if !m.manifest.IsComplete() {
 		return fmt.Errorf("Manifest not ready for upload!")
 	}
@@ -35,7 +35,7 @@ func (m *ManifestUploader) Upload() error {
 }
 
 // upload attempts to send the manifest file's JSON to object storage.
-func (m *ManifestUploader) upload() error {
+func (m *manifestUploader) upload() error {
 	manifestJSON, err := json.Marshal(m.manifest)
 	if err != nil {
 		return fmt.Errorf("Failed to convert manifest array to JSON: %s", err)

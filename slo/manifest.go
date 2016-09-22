@@ -109,6 +109,6 @@ func (m *manifest) Builder(source *source, output chan string) *manifestBuilder 
 
 // Uploader creates and returns an uploader for this manifest to the
 // provided swift connection.
-func (m *manifest) Uploader(connection *swift.Connection, output chan string) *ManifestUploader {
-	return NewManifestUploader(m, connection, output)
+func (m *manifest) Uploader(connection *swift.Connection, output chan string) *manifestUploader {
+	return newManifestUploader(m, connection, output)
 }
