@@ -36,18 +36,23 @@ func (s *Status) SetNumberUploads(number uint) {
 	s.TotalUploads = number
 }
 
+// Start begins timing the upload
 func (s *Status) Start() {
 	s.uploadStarted = time.Now()
 }
 
+// Stop finalizes the duration of the upload
 func (s *Status) Stop() {
 	s.uploadDuration = time.Since(s.uploadStarted)
 }
 
+// UploadComplete marks that one chunk has been uploaded. Call this
+// each time an upload succeeds.
 func (s *Status) UploadComplete() {
 	s.NumberUploaded += 1
 }
 
+// Rate computes the observed rate of upload in bytes / second.
 func (s *Status) Rate() float64 {
 	if s.uploadStarted == (time.Time{}) {
 		return 0.0
@@ -59,20 +64,24 @@ func (s *Status) Rate() float64 {
 	return rate
 }
 
+// RateMBPS computes the observed rate of upload in megabytes / second.
 func (s *Status) RateMBPS() float64 {
 	return s.Rate() / 1e6
 }
 
+// TimeRemaining estimates the amount of time remaining in the upload.
 func (s *Status) TimeRemaining() time.Duration {
 	finishedIn := int(float64((s.TotalUploads-s.NumberUploaded)*s.UploadSize) / s.Rate())
 	timeRemaining := time.Duration(finishedIn) * time.Second
 	return timeRemaining
 }
 
+// PercentComplete returns much of the upload is complete.
 func (s *Status) PercentComplete() float64 {
 	return float64(s.NumberUploaded) / float64(s.TotalUploads) * 100
 }
 
+// String creates a status message from the current state of the status.
 func (s *Status) String() string {
 	if s.uploadStarted == (time.Time{}) {
 		return "Upload not started yet"
@@ -89,6 +98,7 @@ func (s *Status) String() string {
 		s.TimeRemaining())
 }
 
+// Print sends the current status of the upload to the output channel.
 func (s *Status) Print() {
 	s.outputChannel <- s.String()
 }
