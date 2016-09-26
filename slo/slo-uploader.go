@@ -85,10 +85,19 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 		return nil, fmt.Errorf("Failed to create source reader:  %s", err)
 	}
 	outputChannel <- fmt.Sprintf("file will be split into %d chunks of size %d bytes", numChunks, chunkSize)
+	status := newStatus(numChunks, chunkSize, outputChannel)
+
+	// Asynchronously print status every 5 seconds
+	go func(status *Status, intervalSeconds uint) {
+		for {
+			time.Sleep(time.Duration(intervalSeconds) * time.Second)
+			status.print()
+		}
+	}(status, 5)
 
 	return &Uploader{
 		outputChannel: outputChannel,
-		Status:        newStatus(numChunks, chunkSize, outputChannel),
+		Status:        status,
 		manifest:      sloManifest,
 		connection:    connection,
 		source:        sourceReader,
@@ -121,14 +130,12 @@ func (u *Uploader) Upload() error {
 		// Begin new upload
 		if u.inventory.ShouldUpload(readyChunkNumber) {
 			go u.uploadDataForChunk(readyChunkNumber, chunkCompleteChannel)
-			u.Status.print()
 			currrentNumberUploaders += 1
 		}
 	}
 	for currrentNumberUploaders > 0 {
 		<-chunkCompleteChannel
 		u.Status.uploadComplete()
-		u.Status.print()
 		currrentNumberUploaders -= 1
 	}
 	u.Status.stop()

@@ -111,7 +111,8 @@ func (s *Status) String() string {
 			s.RateMBPS())
 	}
 	return fmt.Sprintf(
-		"%3.2f%% Uploaded\tAverage Upload Speed %03.2f MB/sec\t%s Remaining",
+		"[%s] %3.2f%% Uploaded\tAverage Upload Speed %03.2f MB/sec\t%s Remaining",
+		time.Now(),
 		s.PercentComplete(),
 		s.RateMBPS(),
 		s.TimeRemaining())
