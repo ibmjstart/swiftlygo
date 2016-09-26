@@ -93,7 +93,7 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 			time.Sleep(time.Duration(intervalSeconds) * time.Second)
 			status.print()
 		}
-	}(status, 5)
+	}(status, 60)
 
 	return &Uploader{
 		outputChannel: outputChannel,
@@ -130,6 +130,7 @@ func (u *Uploader) Upload() error {
 		// Begin new upload
 		if u.inventory.ShouldUpload(readyChunkNumber) {
 			go u.uploadDataForChunk(readyChunkNumber, chunkCompleteChannel)
+			outputChannel <- fmt.Sprintf("Starting upload for chunk %d", readyChunkNumber)
 			currrentNumberUploaders += 1
 		}
 	}
