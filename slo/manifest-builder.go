@@ -40,6 +40,7 @@ func (m *manifestBuilder) Build() {
 	m.output <- "Starting chunk pre-hash"
 	var i uint
 	for i = 0; i < m.manifest.NumberChunks; i++ {
+		m.output <- fmt.Sprintf("Preparing chunk %d", i)
 		m.prepare(i)
 		m.chunksCompleted <- i
 	}

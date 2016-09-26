@@ -121,9 +121,9 @@ func (u *Uploader) Upload() error {
 		// Begin new upload
 		if u.inventory.ShouldUpload(readyChunkNumber) {
 			go u.uploadDataForChunk(readyChunkNumber, chunkCompleteChannel)
+			u.Status.print()
 			currrentNumberUploaders += 1
 		}
-		u.Status.print()
 	}
 	for currrentNumberUploaders > 0 {
 		<-chunkCompleteChannel

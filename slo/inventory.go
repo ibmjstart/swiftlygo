@@ -64,7 +64,7 @@ func (i *inventory) TakeInventory() error {
 	}
 	i.numberUploadNeeded -= uint(numberFilesAlreadyUploaded)
 	i.output <- fmt.Sprintf(
-		"%d chunks need uploading. Additionally, manifest file is always re-uploaded.\n",
+		"%d chunks need uploading. Additionally, manifest file is always re-uploaded.",
 		i.numberUploadNeeded)
 	i.ready = true
 	return nil
