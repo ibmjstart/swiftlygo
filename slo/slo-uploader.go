@@ -130,7 +130,7 @@ func (u *Uploader) Upload() error {
 		// Begin new upload
 		if u.inventory.ShouldUpload(readyChunkNumber) {
 			go u.uploadDataForChunk(readyChunkNumber, chunkCompleteChannel)
-			outputChannel <- fmt.Sprintf("Starting upload for chunk %d", readyChunkNumber)
+			u.outputChannel <- fmt.Sprintf("Starting upload for chunk %d", readyChunkNumber)
 			currrentNumberUploaders += 1
 		}
 	}
