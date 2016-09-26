@@ -8,7 +8,7 @@ import (
 )
 
 // GetAuthVersion extracts the OpenStack auth version from the end of an authURL.
-func GetAuthVersion(url string) (int, error) {
+func getAuthVersion(url string) (int, error) {
 	// Extract auth version from auth URL
 	authVersionRegex, err := regexp.Compile(".*/v([0-9])[.0-9]*/?$")
 	if err != nil {
@@ -26,9 +26,9 @@ func GetAuthVersion(url string) (int, error) {
 }
 
 // authenticate logs in to OpenStack object storage and returns a connection to the
-// object store.
+// object store. The url MUST have its auth version at the end: https://example.com/v{1,2,3}
 func Authenticate(username, apiKey, authURL, domain, tenant string) (swift.Connection, error) {
-	version, err := GetAuthVersion(authURL)
+	version, err := getAuthVersion(authURL)
 	if err != nil {
 		return swift.Connection{}, err
 	}

@@ -20,7 +20,7 @@ type inventory struct {
 func newInventory(manifest *manifest, connection *swift.Connection, overwrite bool, output chan string) *inventory {
 	return &inventory{
 		uploadNeeded:       make([]bool, manifest.NumberChunks),
-		numberUploadNeeded: 0,
+		numberUploadNeeded: manifest.NumberChunks,
 		ready:              false,
 		manifest:           manifest,
 		connection:         connection,
@@ -35,6 +35,9 @@ func (i *inventory) TakeInventory() error {
 	if i.overwrite {
 		i.markAll()
 		return nil
+	}
+	for k := range i.uploadNeeded {
+		i.uploadNeeded[k] = true
 	}
 	containerFiles, err := i.connection.ObjectNamesAll(i.manifest.ContainerName, nil)
 	if err != nil {

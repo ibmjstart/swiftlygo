@@ -94,6 +94,9 @@ func (s *Status) TimeRemaining() time.Duration {
 
 // PercentComplete returns much of the upload is complete.
 func (s *Status) PercentComplete() float64 {
+	if s.totalUploads <= 0 {
+		return 0.0
+	}
 	return float64(s.numberUploaded) / float64(s.totalUploads) * 100
 }
 

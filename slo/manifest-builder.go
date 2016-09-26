@@ -3,6 +3,7 @@ package slo
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 )
 
 // manifestBuilder fills out Manifest structs so that they can generate
@@ -49,9 +50,13 @@ func (m *manifestBuilder) Build() {
 
 // prepare hashes a single data chunk and adds its information to
 // the manifest.
-func (m *manifestBuilder) prepare(chunkNumber uint) {
-	dataSlice, bytesRead := m.source.ChunkData(chunkNumber)
+func (m *manifestBuilder) prepare(chunkNumber uint) error {
+	dataSlice, bytesRead, err := m.source.ChunkData(chunkNumber)
+	if err != nil {
+		return fmt.Errorf("Error building manifest segment #%d: %s", chunkNumber, err)
+	}
 	hashBytes := md5.Sum(dataSlice)
 	hash := hex.EncodeToString(hashBytes[:])
 	m.manifest.Add(chunkNumber, hash, uint(bytesRead))
+	return nil
 }

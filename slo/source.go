@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 )
 
 const defaultBufferLength = mebibyte
@@ -18,29 +19,43 @@ type source struct {
 
 // NewSource creates a source out of a file so that it can easily be
 // read in chunks.
-func newSource(file *os.File, chunkSize, numberChunks uint) *source {
+func newSource(file *os.File, chunkSize, numberChunks uint) (*source, error) {
 	info, err := file.Stat()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return &source{
 		file:         file,
 		fileSize:     uint(info.Size()),
 		chunkSize:    chunkSize,
 		numberChunks: numberChunks,
-	}
+	}, nil
 }
 
-// ChunkData gets the raw data for a given chunk of a file. If there's an error
-// reading the file, it will panic.
-func (s *source) ChunkData(chunkNumber uint) ([]byte, uint) {
+// ChunkData gets the raw data for a given chunk of a file.
+func (s *source) ChunkData(chunkNumber uint) ([]byte, uint, error) {
+	data, bytesRead, err := s.attemptReadChunk(chunkNumber)
+	errCount := 0
+	for err != nil && errCount < 5 {
+		errCount += 1
+		time.Sleep(time.Duration(1<<uint(errCount)) * time.Second) // wait 2^errCount seconds<Paste>
+		data, bytesRead, err = s.attemptReadChunk(chunkNumber)
+	}
+	if err != nil {
+		return data, bytesRead, fmt.Errorf("Unable to read file chunk %d with error: %s", chunkNumber, err)
+	}
+	return data, bytesRead, nil
+}
+
+// attemptReadChunk makes a single attempt to read a chunk of data.
+func (s *source) attemptReadChunk(chunkNumber uint) ([]byte, uint, error) {
 	data := make([]byte, s.chunkSize)
 	bytesRead, err := s.file.ReadAt(data, int64(chunkNumber*s.chunkSize))
 	if err != nil && err != io.EOF {
-		panic(err)
+		return data, uint(bytesRead), err
 	}
 	dataSlice := data[:bytesRead] // Trim off any empty elements at the end
-	return dataSlice, uint(bytesRead)
+	return dataSlice, uint(bytesRead), nil
 }
 
 // chunkReader defines a convenient way to read a data chunk
@@ -86,16 +101,22 @@ func (c *chunkReader) String() string {
 
 // Read returns a byte slice of the file chunk's content until c.HasUnreadData() is false.
 // Call it within a loop to get all of the data from this file chunk.
-func (c *chunkReader) Read() []byte {
+func (c *chunkReader) Read() ([]byte, error) {
 	buffer := make([]byte, c.bufferLength)
 	bufferLength := uint(len(buffer))
 	if bytesRemaining := c.totalBytes - c.bytesRead; bytesRemaining <= bufferLength {
 		bufferLength = bytesRemaining
 	}
 	bytesRead, err := c.file.ReadAt(buffer[:bufferLength], int64(c.startingByte+c.bytesRead))
-	c.bytesRead += uint(bytesRead)
-	if err != nil && err != io.EOF {
-		panic(err)
+	errCount := 0
+	for err != nil && err != io.EOF {
+		errCount += 1
+		time.Sleep(time.Duration(1<<uint(errCount)) * time.Second) // wait 2^errCount seconds<Paste>
+		bytesRead, err = c.file.ReadAt(buffer[:bufferLength], int64(c.startingByte+c.bytesRead))
 	}
-	return buffer[:bufferLength]
+	if err != nil && err != io.EOF {
+		return buffer, err
+	}
+	c.bytesRead += uint(bytesRead)
+	return buffer[:bufferLength], nil
 }

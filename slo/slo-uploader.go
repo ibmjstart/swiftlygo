@@ -80,14 +80,18 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create SLO Manifest: %s", err)
 	}
-
+	sourceReader, err := newSource(source, chunkSize, numChunks)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create source reader:  %s", err)
+	}
 	outputChannel <- fmt.Sprintf("file will be split into %d chunks of size %d bytes", numChunks, chunkSize)
+
 	return &Uploader{
 		outputChannel: outputChannel,
 		Status:        newStatus(numChunks, chunkSize, outputChannel),
 		manifest:      sloManifest,
 		connection:    connection,
-		source:        newSource(source, chunkSize, numChunks),
+		source:        sourceReader,
 		inventory:     newInventory(sloManifest, &connection, !onlyMissing, outputChannel),
 		maxUploaders:  maxUploads,
 	}, nil
@@ -168,7 +172,11 @@ func (u *Uploader) attemptDataUpload(chunkNumber uint) error {
 		return fmt.Errorf("Failed to create upload for chunk %s: %s", chunkName, err)
 	}
 	for chunkReader.HasUnreadData() {
-		_, err := fileCreator.Write(chunkReader.Read())
+		data, err := chunkReader.Read()
+		if err != nil {
+			return fmt.Errorf("Failed to read data for chunk %s: %s", chunkName, err)
+		}
+		_, err = fileCreator.Write(data)
 		if err != nil {
 			return fmt.Errorf("Failed to write data for chunk %s: %s", chunkName, err)
 		}
