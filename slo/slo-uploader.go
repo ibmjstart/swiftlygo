@@ -108,6 +108,24 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 
 // Upload uploads the sloUploader's source file to object storage
 func (u *Uploader) Upload() error {
+	return u.performUpload()
+}
+
+// AsyncUpload asynchronously uploads the data and manifest, but in a separate
+// goroutine. The caller can recieve errors on the provided err channel which
+// be closed when the upload is complete
+func (u *Uploader) AnsycUpload(errChan chan error) {
+	go func(errChan chan error) {
+		err := u.performUpload()
+		if err != nil {
+			errChan <- err // send errors back
+		}
+		close(errChan)
+	}(errChan)
+}
+
+// performUpload carries out the work of creating the manifest and uploading it.
+func (u *Uploader) performUpload() error {
 	// start hashing chunks
 	chunkPreparedChannel := u.manifest.Builder(u.source, u.outputChannel).Start()
 
