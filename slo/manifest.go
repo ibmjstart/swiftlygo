@@ -1,6 +1,8 @@
 package slo
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/ncw/swift"
@@ -50,6 +52,15 @@ func newManifest(name, containerName string, numberChunks, chunkSize uint) (*man
 		ContainerName: containerName,
 		complete:      false,
 	}, nil
+}
+
+func (m *manifest) Etag() string {
+	chunkEtags := ""
+	for _, chunk := range m.Chunks {
+		chunkEtags += chunk.etag
+	}
+	hash := md5.Sum([]byte(chunkEtags))
+	return hex.EncodeToString(hash[:])
 }
 
 // getChunkNameTemplate returns the template for the names of chunks of this file.
