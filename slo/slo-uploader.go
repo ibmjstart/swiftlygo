@@ -123,35 +123,6 @@ func (u *Uploader) Upload() error {
 	return u.performUpload(chunkPreparedChannel)
 }
 
-// AsyncUpload asynchronously uploads the data and manifest, but in a separate
-// goroutine. The caller can recieve errors on the provided err channel which
-// be closed when the upload is complete
-func (u *Uploader) AsyncUpload(errChan chan error) {
-	go func(errChan chan error) {
-		chunkPreparedChannel := u.manifest.Build(u.source, u.outputChannel)
-		err := u.performUpload(chunkPreparedChannel)
-		if err != nil {
-			errChan <- err // send errors back
-		}
-		close(errChan)
-	}(errChan)
-}
-
-// AsyncUploadFromPrevious asynchronously uploads the data and manifest (but restores the
-// manifest from a previous attempt's JSON), but in a separate
-// goroutine. The caller can recieve errors on the provided err channel which
-// be closed when the upload is complete
-func (u *Uploader) AsyncUploadFromPrevious(jsonData []byte, errChan chan error) {
-	go func(errChan chan error) {
-		chunkPreparedChannel := u.manifest.BuildFromExisting(jsonData, u.source, u.outputChannel)
-		err := u.performUpload(chunkPreparedChannel)
-		if err != nil {
-			errChan <- err // send errors back
-		}
-		close(errChan)
-	}(errChan)
-}
-
 // performUpload carries out the work of creating the manifest and uploading it.
 func (u *Uploader) performUpload(chunkPreparedChannel chan uint) error {
 	// prepare inventory
