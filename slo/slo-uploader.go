@@ -54,7 +54,7 @@ func getNumberChunks(file *os.File, chunkSize uint) (numChunks uint, e error) {
 			minimumChunkSize,
 			maxChunkSize)
 	} else if chunkSize > uint(dataSize) {
-		fmt.Errorf("Chunk size %d bytes is greater than file size (%d bytes)",
+		return 0, fmt.Errorf("Chunk size %d bytes is greater than file size (%d bytes)",
 			chunkSize,
 			dataSize)
 	}
