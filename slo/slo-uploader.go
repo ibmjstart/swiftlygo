@@ -114,7 +114,7 @@ func (u *Uploader) Upload() error {
 // AsyncUpload asynchronously uploads the data and manifest, but in a separate
 // goroutine. The caller can recieve errors on the provided err channel which
 // be closed when the upload is complete
-func (u *Uploader) AnsycUpload(errChan chan error) {
+func (u *Uploader) AsyncUpload(errChan chan error) {
 	go func(errChan chan error) {
 		err := u.performUpload()
 		if err != nil {
@@ -127,7 +127,7 @@ func (u *Uploader) AnsycUpload(errChan chan error) {
 // performUpload carries out the work of creating the manifest and uploading it.
 func (u *Uploader) performUpload() error {
 	// start hashing chunks
-	chunkPreparedChannel := u.manifest.Builder(u.source, u.outputChannel).Start()
+	chunkPreparedChannel := u.manifest.Build(u.source, u.outputChannel)
 
 	// prepare inventory
 	err := u.inventory.TakeInventory()

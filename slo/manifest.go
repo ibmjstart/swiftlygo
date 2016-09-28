@@ -101,10 +101,11 @@ func (m *manifest) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.Chunks)
 }
 
-// Builder creates and returns a builder for this manifest that will populate
-// it with data from the provided source.
-func (m *manifest) Builder(source *source, output chan string) *manifestBuilder {
-	return newBuilder(m, source, output)
+// Build begins the process of constructing a manifest file and a channel of
+// chunk numbers that is added to whenever a chunk is completed.
+func (m *manifest) Build(source *source, output chan string) chan uint {
+	builder := newBuilder(m, source, output)
+	return builder.Start()
 }
 
 // Uploader creates and returns an uploader for this manifest to the
