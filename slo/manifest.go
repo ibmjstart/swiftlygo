@@ -117,6 +117,14 @@ func (m *manifest) Build(source *source, output chan string) chan uint {
 	return builder.Start()
 }
 
+// BuildFromExisting begins the process of constructing a manifest file
+// but first parses the provided json as a starting point and a channel of
+// chunk numbers that is added to whenever a chunk is completed.
+func (m *manifest) BuildFromExisting(jsonManifest []byte, source *source, output chan string) chan uint {
+	builder := newBuilder(m, source, output)
+	return builder.StartFromExisting(jsonManifest)
+}
+
 // Uploader creates and returns an uploader for this manifest to the
 // provided swift connection.
 func (m *manifest) Uploader(connection *swift.Connection, output chan string) *manifestUploader {

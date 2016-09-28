@@ -35,6 +35,14 @@ func (m *manifestBuilder) Start() chan uint {
 	return m.chunksCompleted
 }
 
+// StartFromExisting asynchronously runs BuildFromExisting() on the manifest and returns a channel
+// on which it will send the indicies of chunks when it has finished with
+// them.
+func (m *manifestBuilder) StartFromExisting(jsonManifest []byte) chan uint {
+	go m.BuildFromExisting(jsonManifest)
+	return m.chunksCompleted
+}
+
 // Build sequentially prepares each data chunk and adds its information
 // to the Manifest.
 func (m *manifestBuilder) Build() {
@@ -52,13 +60,34 @@ func (m *manifestBuilder) Build() {
 
 // BuildFromExisting restores a saved manifest from its json representation and fills in
 // missing chunks of the manifest..
-func (m *manifestBuilder) BuildFromExisting(jsonManifest string) {
+func (m *manifestBuilder) BuildFromExisting(jsonManifest []byte) {
 	m.output <- "Restoring from saved manifest"
-	jsonData := make([]map[string]string, 1000)
-	json.Unmarshal([]byte(jsonManifest), &jsonData)
-	m.output <- fmt.Sprintf("%v", jsonData)
+	jsonData := make([]struct {
+		Path string `json:"path"`
+		Etag string `json:"etag"`
+		Size uint   `json:"size_bytes"`
+	}, 1000)
+	format := m.manifest.ContainerName + "/" + fmt.Sprintf(m.manifest.getChunkNameTemplate(), "%04d")
+	added := make([]bool, m.manifest.NumberChunks)
+	json.Unmarshal(jsonManifest, &jsonData)
+	for _, dataStruct := range jsonData {
+		chunkNumber := uint(0)
+		numScanned, err := fmt.Sscanf(dataStruct.Path, format, &chunkNumber)
+		if err != nil || numScanned < 1 {
+			continue
+		}
+		m.manifest.Add(chunkNumber, dataStruct.Etag, dataStruct.Size)
+		added[chunkNumber] = true
+		m.chunksCompleted <- chunkNumber
+	}
 	m.output <- "Starting chunk pre-hash"
-
+	for i, alreadyDone := range added {
+		if !alreadyDone {
+			m.output <- fmt.Sprintf("Preparing chunk %d", i)
+			m.prepare(uint(i))
+			m.chunksCompleted <- uint(i)
+		}
+	}
 	m.manifest.MarkComplete()
 	m.output <- "Chunk pre-hash complete"
 	close(m.chunksCompleted)

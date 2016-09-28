@@ -106,9 +106,21 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 	}, nil
 }
 
+// UploadFromPrevious uploads the sloUploader's source file to object storage
+// but starts using the provided JSON as the basis for building the manifest.
+func (u *Uploader) UploadFromPrevious(jsonData []byte) error {
+	// start hashing chunks
+	chunkPreparedChannel := u.manifest.BuildFromExisting(jsonData, u.source, u.outputChannel)
+
+	return u.performUpload(chunkPreparedChannel)
+}
+
 // Upload uploads the sloUploader's source file to object storage
 func (u *Uploader) Upload() error {
-	return u.performUpload()
+	// start hashing chunks
+	chunkPreparedChannel := u.manifest.Build(u.source, u.outputChannel)
+
+	return u.performUpload(chunkPreparedChannel)
 }
 
 // AsyncUpload asynchronously uploads the data and manifest, but in a separate
@@ -116,7 +128,23 @@ func (u *Uploader) Upload() error {
 // be closed when the upload is complete
 func (u *Uploader) AsyncUpload(errChan chan error) {
 	go func(errChan chan error) {
-		err := u.performUpload()
+		chunkPreparedChannel := u.manifest.Build(u.source, u.outputChannel)
+		err := u.performUpload(chunkPreparedChannel)
+		if err != nil {
+			errChan <- err // send errors back
+		}
+		close(errChan)
+	}(errChan)
+}
+
+// AsyncUploadFromPrevious asynchronously uploads the data and manifest (but restores the
+// manifest from a previous attempt's JSON), but in a separate
+// goroutine. The caller can recieve errors on the provided err channel which
+// be closed when the upload is complete
+func (u *Uploader) AsyncUploadFromPrevious(jsonData []byte, errChan chan error) {
+	go func(errChan chan error) {
+		chunkPreparedChannel := u.manifest.BuildFromExisting(jsonData, u.source, u.outputChannel)
+		err := u.performUpload(chunkPreparedChannel)
 		if err != nil {
 			errChan <- err // send errors back
 		}
@@ -125,10 +153,7 @@ func (u *Uploader) AsyncUpload(errChan chan error) {
 }
 
 // performUpload carries out the work of creating the manifest and uploading it.
-func (u *Uploader) performUpload() error {
-	// start hashing chunks
-	chunkPreparedChannel := u.manifest.Build(u.source, u.outputChannel)
-
+func (u *Uploader) performUpload(chunkPreparedChannel chan uint) error {
 	// prepare inventory
 	err := u.inventory.TakeInventory()
 	if err != nil {
