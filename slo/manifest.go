@@ -101,6 +101,15 @@ func (m *manifest) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m.Chunks)
 }
 
+// JSON returns the manifest as a JSON string.
+func (m *manifest) JSON() (string, error) {
+	manifestJSON, err := json.Marshal(m)
+	if err != nil {
+		return "", fmt.Errorf("Failed to convert manifest array to JSON: %s", err)
+	}
+	return string(manifestJSON), nil
+}
+
 // Build begins the process of constructing a manifest file and a channel of
 // chunk numbers that is added to whenever a chunk is completed.
 func (m *manifest) Build(source *source, output chan string) chan uint {

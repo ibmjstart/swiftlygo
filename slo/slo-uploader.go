@@ -213,3 +213,13 @@ func (u *Uploader) attemptDataUpload(chunkNumber uint) error {
 	}
 	return nil
 }
+
+// ManifestJSON returns the current contents of the manifest, whether it is
+// complete or not
+func (u *Uploader) ManifestJSON() (string, error) {
+	json, err := u.manifest.JSON()
+	if err != nil {
+		return json, fmt.Errorf("Failed to get JSON manifest: %s", err)
+	}
+	return json, nil
+}
