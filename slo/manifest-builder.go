@@ -3,6 +3,7 @@ package slo
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 )
 
@@ -44,6 +45,20 @@ func (m *manifestBuilder) Build() {
 		m.prepare(i)
 		m.chunksCompleted <- i
 	}
+	m.manifest.MarkComplete()
+	m.output <- "Chunk pre-hash complete"
+	close(m.chunksCompleted)
+}
+
+// BuildFromExisting restores a saved manifest from its json representation and fills in
+// missing chunks of the manifest..
+func (m *manifestBuilder) BuildFromExisting(jsonManifest string) {
+	m.output <- "Restoring from saved manifest"
+	jsonData := make([]map[string]string, 1000)
+	json.Unmarshal([]byte(jsonManifest), &jsonData)
+	m.output <- fmt.Sprintf("%v", jsonData)
+	m.output <- "Starting chunk pre-hash"
+
 	m.manifest.MarkComplete()
 	m.output <- "Chunk pre-hash complete"
 	close(m.chunksCompleted)
