@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ncw/swift"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -55,7 +56,8 @@ func (m *manifestUploader) upload() error {
 	if err != nil {
 		return fmt.Errorf("Error sending manifest upload request: %s", err)
 	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("Failed to upload manifest with status %d (response: %v)", response.StatusCode, response)
+		response.Write(os.Stderr)
+		return fmt.Errorf("Failed to upload manifest with status %d", response.StatusCode)
 	}
 	// Check the returned hash against our locally computed one. We need to strip the quotes off of the sides of the hash first
 	if strings.Trim(response.Header["Etag"][0], "\"") != m.manifest.Etag() {
