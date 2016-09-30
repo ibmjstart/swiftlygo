@@ -51,7 +51,7 @@ func (s *source) ChunkData(chunkNumber uint) ([]byte, uint, error) {
 func (s *source) attemptReadChunk(chunkNumber uint) ([]byte, uint, error) {
 	dataSize := s.chunkSize
 	if chunkNumber+1 == s.numberChunks {
-		dataSize = s.fileSize % s.chunkSize
+		dataSize = s.fileSize - (s.chunkSize * chunkNumber)
 	}
 	data := make([]byte, dataSize)
 	bytesRead, err := s.file.ReadAt(data, int64(chunkNumber*s.chunkSize))
