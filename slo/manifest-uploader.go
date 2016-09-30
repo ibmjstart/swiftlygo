@@ -56,6 +56,7 @@ func (m *manifestUploader) upload() error {
 	if err != nil {
 		return fmt.Errorf("Error sending manifest upload request: %s", err)
 	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
+		fmt.Fprintln(os.Stderr, string(manifestJSON))
 		response.Write(os.Stderr)
 		return fmt.Errorf("Failed to upload manifest with status %d", response.StatusCode)
 	}
