@@ -49,7 +49,11 @@ func (s *source) ChunkData(chunkNumber uint) ([]byte, uint, error) {
 
 // attemptReadChunk makes a single attempt to read a chunk of data.
 func (s *source) attemptReadChunk(chunkNumber uint) ([]byte, uint, error) {
-	data := make([]byte, s.chunkSize)
+	dataSize := s.chunkSize
+	if chunkNumber+1 == s.numberChunks {
+		dataSize = s.fileSize % s.chunkSize
+	}
+	data := make([]byte, dataSize)
 	bytesRead, err := s.file.ReadAt(data, int64(chunkNumber*s.chunkSize))
 	if err != nil && err != io.EOF {
 		return data, uint(bytesRead), err
