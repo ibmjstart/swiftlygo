@@ -70,6 +70,15 @@ func (i *inventory) TakeInventory() error {
 	return nil
 }
 
+// Exclude tells the inventory that the provided chunk numbers should
+// not be uploaded. This should be called after TakeInventory()
+func (i *inventory) Exclude(chunkNumbers ...uint) {
+	for _, chunkNumber := range chunkNumbers {
+		i.uploadNeeded[chunkNumber] = false
+	}
+	i.numberUploadNeeded -= uint(len(chunkNumbers))
+}
+
 // markAll marks all chunks as needing upload.
 func (i *inventory) markAll() {
 	for k := range i.uploadNeeded {
