@@ -75,7 +75,7 @@ type chunkReader struct {
 func (s *source) ChunkReader(chunkNumber uint) *chunkReader {
 	totalBytes := s.chunkSize
 	if chunkNumber+1 == s.numberChunks {
-		totalBytes = s.fileSize % s.chunkSize
+		totalBytes = s.fileSize - (s.chunkSize * chunkNumber)
 	}
 	return &chunkReader{
 		file:         s.file,
