@@ -4,20 +4,19 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/ncw/swift"
 	"os"
 )
 
 const maxObjectSize uint = 1000 * 1000 * 1000 * 5
 
 type objectUploader struct {
-	connection *swift.Connection
+	connection Destination
 	source     *os.File
 	container  string
 	objectName string
 }
 
-func NewObjectUploader(connection *swift.Connection, source *os.File, container, objectName string) *objectUploader {
+func NewObjectUploader(connection Destination, source *os.File, container, objectName string) *objectUploader {
 	return &objectUploader{
 		connection: connection,
 		source:     source,
@@ -34,7 +33,7 @@ func (d *objectUploader) Upload() error {
 
 	hash := hashSource(data)
 
-	fileCreator, err := d.connection.ObjectCreate(d.container, d.objectName, true, hash, "", nil)
+	fileCreator, err := d.connection.CreateFile(d.container, d.objectName, true, hash)
 	if err != nil {
 		return fmt.Errorf("Failed to create object segment: %s", err)
 	}

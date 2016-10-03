@@ -2,17 +2,16 @@ package swiftlygo
 
 import (
 	"fmt"
-	"github.com/ncw/swift"
 	"net/http"
 )
 
 type dloManifestUploader struct {
 	container  string
 	dloName    string
-	connection *swift.Connection
+	connection Destination
 }
 
-func NewDloManifestUploader(connection *swift.Connection, container, dloName string) *dloManifestUploader {
+func NewDloManifestUploader(connection Destination, container, dloName string) *dloManifestUploader {
 	return &dloManifestUploader{
 		container:  container,
 		dloName:    dloName,
@@ -22,13 +21,13 @@ func NewDloManifestUploader(connection *swift.Connection, container, dloName str
 
 func (d *dloManifestUploader) Upload() error {
 	prefix := d.container + "/" + d.dloName
-	targetURL := d.connection.StorageUrl + "/" + prefix
+	targetURL := d.connection.AuthUrl() + "/" + prefix
 
 	request, err := http.NewRequest(http.MethodPut, targetURL, nil)
 	if err != nil {
 		return fmt.Errorf("Failed to create request for uploading manifest file: %s", err)
 	}
-	request.Header.Add("X-Auth-Token", d.connection.AuthToken)
+	request.Header.Add("X-Auth-Token", d.connection.AuthToken())
 	request.Header.Add("X-Object-Manifest", prefix)
 
 	response, err := http.DefaultClient.Do(request)
