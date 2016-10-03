@@ -2,7 +2,6 @@ package slo
 
 import (
 	"fmt"
-	"github.com/ncw/swift"
 	"io"
 	"math"
 	"os"
@@ -23,7 +22,7 @@ type Uploader struct {
 	Status        *Status
 	manifest      *manifest
 	source        *source
-	connection    swift.Connection
+	connection    Destination
 	inventory     *inventory
 	maxUploaders  uint
 }
@@ -61,7 +60,7 @@ func getNumberChunks(file *os.File, chunkSize uint) (numChunks uint, e error) {
 	return numChunks, nil
 }
 
-func NewUploader(connection swift.Connection, chunkSize uint, container string,
+func NewUploader(connection Destination, chunkSize uint, container string,
 	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*Uploader, error) {
 
 	outputChannel := make(chan string, 10)
@@ -101,7 +100,7 @@ func NewUploader(connection swift.Connection, chunkSize uint, container string,
 		manifest:      sloManifest,
 		connection:    connection,
 		source:        sourceReader,
-		inventory:     newInventory(sloManifest, &connection, !onlyMissing, outputChannel),
+		inventory:     newInventory(sloManifest, connection, !onlyMissing, outputChannel),
 		maxUploaders:  maxUploads,
 	}, nil
 }
@@ -169,7 +168,7 @@ func (u *Uploader) performUpload(chunkPreparedChannel chan uint) error {
 	}
 	u.Status.stop()
 	u.Status.print()
-	err := u.manifest.Uploader(&u.connection, u.outputChannel).Upload()
+	err := u.manifest.Uploader(u.connection, u.outputChannel).Upload()
 	if err != nil {
 		return fmt.Errorf("Error Uploading Manifest: %s", err)
 	}
@@ -203,7 +202,7 @@ func (u *Uploader) attemptDataUpload(chunkNumber uint) error {
 	chunkName := sloChunk.Name()
 
 	chunkReader := u.source.ChunkReader(chunkNumber)
-	fileCreator, err := u.connection.ObjectCreate(sloChunk.Container(), sloChunk.Name(), true, sloChunk.Hash(), "", nil)
+	fileCreator, err := u.connection.CreateFile(sloChunk.Container(), sloChunk.Name(), true, sloChunk.Hash())
 	if err != nil {
 		return fmt.Errorf("Failed to create upload for chunk %s: %s", chunkName, err)
 	}

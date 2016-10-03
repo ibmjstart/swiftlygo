@@ -2,7 +2,6 @@ package slo
 
 import (
 	"fmt"
-	"github.com/ncw/swift"
 	"regexp"
 	"strconv"
 )
@@ -11,13 +10,13 @@ type inventory struct {
 	uploadNeeded       []bool
 	numberUploadNeeded uint
 	manifest           *manifest
-	connection         *swift.Connection
+	connection         Destination
 	overwrite          bool
 	ready              bool
 	output             chan string
 }
 
-func newInventory(manifest *manifest, connection *swift.Connection, overwrite bool, output chan string) *inventory {
+func newInventory(manifest *manifest, connection Destination, overwrite bool, output chan string) *inventory {
 	return &inventory{
 		uploadNeeded:       make([]bool, manifest.NumberChunks),
 		numberUploadNeeded: manifest.NumberChunks,
@@ -39,7 +38,7 @@ func (i *inventory) TakeInventory() error {
 	for k := range i.uploadNeeded {
 		i.uploadNeeded[k] = true
 	}
-	containerFiles, err := i.connection.ObjectNamesAll(i.manifest.ContainerName, nil)
+	containerFiles, err := i.connection.FileNames(i.manifest.ContainerName)
 	if err != nil {
 		return fmt.Errorf("Unable to fetch container names: %s", err)
 	}
