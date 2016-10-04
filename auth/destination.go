@@ -15,6 +15,7 @@ import (
 type Destination interface {
 	CreateFile(container string, objectName string, checkHash bool, Hash string) (io.WriteCloser, error)
 	CreateSLO(containerName, manifestName, manifestEtag string, sloManifestJSON []byte) error
+	CreateDLO(containerName, manifestName, filenamePrefix string) error
 	FileNames(container string) ([]string, error)
 	AuthUrl() string
 	AuthToken() string
@@ -55,6 +56,28 @@ func (s *SwiftDestination) CreateSLO(containerName, manifestName, manifestEtag s
 	}
 	return nil
 
+}
+
+// CreateDLO creates a dlo with the provided name and prefix in the given container.
+func (s *SwiftDestination) CreateDLO(containerName, manifestName, filenamePrefix string) error {
+	fullDLOPath := containerName + "/" + manifestName
+	targetURL := s.AuthUrl() + "/" + fullDLOPath
+
+	request, err := http.NewRequest(http.MethodPut, targetURL, nil)
+	if err != nil {
+		return fmt.Errorf("Failed to create request for uploading manifest file: %s", err)
+	}
+	request.Header.Add("X-Auth-Token", s.AuthToken())
+	request.Header.Add("X-Object-Manifest", filenamePrefix)
+
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("Error sending manifest upload request: %s", err)
+	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return fmt.Errorf("Failed to upload manifest with status %d", response.StatusCode)
+	}
+
+	return nil
 }
 
 // FileNames returns a slice of the names of all files already in the destination container.
