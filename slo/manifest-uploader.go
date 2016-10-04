@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.ibm.com/ckwaldon/swiftly-go/auth"
+	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"net/http"
 	"strconv"
 	"strings"

@@ -2,7 +2,7 @@ package slo
 
 import (
 	"fmt"
-	"github.ibm.com/ckwaldon/swiftly-go/auth"
+	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"io"
 	"math"
 	"os"
