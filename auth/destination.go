@@ -1,16 +1,20 @@
 package auth
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/ncw/swift"
 	"io"
+	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // Destination defines a valid upload destination for files.
 type Destination interface {
 	CreateFile(container string, objectName string, checkHash bool, Hash string) (io.WriteCloser, error)
+	CreateSLO(containerName, manifestName, manifestEtag string, sloManifestJSON []byte) error
 	FileNames(container string) ([]string, error)
 	AuthUrl() string
 	AuthToken() string
@@ -25,6 +29,32 @@ type SwiftDestination struct {
 // the returned WriteCloser and then close it to upload the data. Be sure to handle errors.
 func (s *SwiftDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (io.WriteCloser, error) {
 	return s.SwiftConnection.ObjectCreate(container, objectName, checkHash, Hash, "", nil)
+}
+
+// CreateSLO sends the provided json to the destination as an SLO manifest.
+func (s *SwiftDestination) CreateSLO(containerName, manifestName, manifestEtag string, sloManifestJSON []byte) error {
+	targetUrl := s.AuthUrl() + "/" + containerName + "/" + manifestName + "?multipart-manifest=put"
+
+	request, err := http.NewRequest(http.MethodPut, targetUrl, bytes.NewReader(sloManifestJSON))
+	if err != nil {
+		return fmt.Errorf("Failed to create request for uploading manifest file: %s", err)
+	}
+	request.Header.Add("X-Auth-Token", s.AuthToken())
+	request.Header.Add("Content-Length", strconv.Itoa(len(sloManifestJSON)))
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return fmt.Errorf("Error sending manifest upload request: %s", err)
+	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
+		body := bytes.NewBufferString("")
+		_, _ = body.ReadFrom(response.Body)
+		return fmt.Errorf("Failed to upload manifest with status %d with reasons:\n%s\nand manifest:\n%s", response.StatusCode, body.String(), string(sloManifestJSON))
+	}
+	// Check the returned hash against our locally computed one. We need to strip the quotes off of the sides of the hash first
+	if strings.Trim(response.Header["Etag"][0], "\"") != manifestEtag {
+		return fmt.Errorf("Manifest corrupted on upload, please try again.")
+	}
+	return nil
+
 }
 
 // FileNames returns a slice of the names of all files already in the destination container.

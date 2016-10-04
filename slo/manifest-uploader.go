@@ -1,13 +1,9 @@
 package slo
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.ibm.com/ckwaldon/swiftlygo/auth"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 // manifestUploader handles sending manifest data to Object storage
@@ -41,27 +37,10 @@ func (m *manifestUploader) upload() error {
 	if err != nil {
 		return fmt.Errorf("Failed to convert manifest array to JSON: %s", err)
 	}
-	targetUrl := m.connection.AuthUrl() + "/" + m.manifest.ContainerName + "/" + m.manifest.Name + "?multipart-manifest=put"
-
 	m.output <- "Beginning SLO Manifest Upload..."
-
-	request, err := http.NewRequest(http.MethodPut, targetUrl, bytes.NewReader(manifestJSON))
+	err = m.connection.CreateSLO(m.manifest.ContainerName, m.manifest.Name, m.manifest.Etag(), manifestJSON)
 	if err != nil {
-		return fmt.Errorf("Failed to create request for uploading manifest file: %s", err)
-	}
-	request.Header.Add("X-Auth-Token", m.connection.AuthToken())
-	request.Header.Add("Content-Length", strconv.Itoa(len(manifestJSON)))
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return fmt.Errorf("Error sending manifest upload request: %s", err)
-	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
-		body := bytes.NewBufferString("")
-		_, _ = body.ReadFrom(response.Body)
-		return fmt.Errorf("Failed to upload manifest with status %d with reasons:\n%s\nand manifest:\n%s", response.StatusCode, body.String(), string(manifestJSON))
-	}
-	// Check the returned hash against our locally computed one. We need to strip the quotes off of the sides of the hash first
-	if strings.Trim(response.Header["Etag"][0], "\"") != m.manifest.Etag() {
-		return fmt.Errorf("Manifest corrupted on upload, please try again.")
+		return fmt.Errorf("Failed to upload manifest: %s", err)
 	}
 	m.output <- "SLO Manifest Upload Complete"
 	return nil
