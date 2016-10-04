@@ -2,16 +2,17 @@ package swiftlygo
 
 import (
 	"fmt"
+	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"net/http"
 )
 
 type dloManifestUploader struct {
 	container  string
 	dloName    string
-	connection Destination
+	connection auth.Destination
 }
 
-func NewDloManifestUploader(connection Destination, container, dloName string) *dloManifestUploader {
+func NewDloManifestUploader(connection auth.Destination, container, dloName string) *dloManifestUploader {
 	return &dloManifestUploader{
 		container:  container,
 		dloName:    dloName,

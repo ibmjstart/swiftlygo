@@ -4,19 +4,20 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"os"
 )
 
 const maxObjectSize uint = 1000 * 1000 * 1000 * 5
 
 type objectUploader struct {
-	connection Destination
+	connection auth.Destination
 	source     *os.File
 	container  string
 	objectName string
 }
 
-func NewObjectUploader(connection Destination, source *os.File, container, objectName string) *objectUploader {
+func NewObjectUploader(connection auth.Destination, source *os.File, container, objectName string) *objectUploader {
 	return &objectUploader{
 		connection: connection,
 		source:     source,
