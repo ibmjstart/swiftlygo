@@ -2,6 +2,7 @@ package slo
 
 import (
 	"fmt"
+	"github.ibm.com/ckwaldon/swiftly-go/auth"
 	"regexp"
 	"strconv"
 )
@@ -10,13 +11,13 @@ type inventory struct {
 	uploadNeeded       []bool
 	numberUploadNeeded uint
 	manifest           *manifest
-	connection         Destination
+	connection         auth.Destination
 	overwrite          bool
 	ready              bool
 	output             chan string
 }
 
-func newInventory(manifest *manifest, connection Destination, overwrite bool, output chan string) *inventory {
+func newInventory(manifest *manifest, connection auth.Destination, overwrite bool, output chan string) *inventory {
 	return &inventory{
 		uploadNeeded:       make([]bool, manifest.NumberChunks),
 		numberUploadNeeded: manifest.NumberChunks,

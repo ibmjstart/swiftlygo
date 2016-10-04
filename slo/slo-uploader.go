@@ -2,6 +2,7 @@ package slo
 
 import (
 	"fmt"
+	"github.ibm.com/ckwaldon/swiftly-go/auth"
 	"io"
 	"math"
 	"os"
@@ -22,7 +23,7 @@ type Uploader struct {
 	Status        *Status
 	manifest      *manifest
 	source        *source
-	connection    Destination
+	connection    auth.Destination
 	inventory     *inventory
 	maxUploaders  uint
 }
@@ -60,7 +61,7 @@ func getNumberChunks(file *os.File, chunkSize uint) (numChunks uint, e error) {
 	return numChunks, nil
 }
 
-func NewUploader(connection Destination, chunkSize uint, container string,
+func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*Uploader, error) {
 
 	outputChannel := make(chan string, 10)

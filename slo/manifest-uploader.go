@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.ibm.com/ckwaldon/swiftly-go/auth"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,12 +14,12 @@ import (
 type manifestUploader struct {
 	output     chan string
 	manifest   *manifest
-	connection Destination
+	connection auth.Destination
 }
 
 // newManifestUploader creates a manifest uploader that will send the provided
 // manifest's JSON to the provided connection
-func newManifestUploader(manifest *manifest, connection Destination, output chan string) *manifestUploader {
+func newManifestUploader(manifest *manifest, connection auth.Destination, output chan string) *manifestUploader {
 	return &manifestUploader{
 		output:     output,
 		manifest:   manifest,

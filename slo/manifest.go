@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.ibm.com/ckwaldon/swiftly-go/auth"
 	"strconv"
 )
 
@@ -137,6 +138,6 @@ func (m *manifest) BuildFromExisting(jsonManifest []byte, source *source, output
 
 // Uploader creates and returns an uploader for this manifest to the
 // provided swift connection.
-func (m *manifest) Uploader(connection Destination, output chan string) *manifestUploader {
+func (m *manifest) Uploader(connection auth.Destination, output chan string) *manifestUploader {
 	return newManifestUploader(m, connection, output)
 }

@@ -1,4 +1,4 @@
-package slo
+package auth
 
 import (
 	"fmt"
