@@ -12,13 +12,19 @@ import (
 	"os"
 )
 
-var _ = Describe("SloUploader", func() {
+var _ = Describe("Uploader", func() {
 	var (
 		destination auth.Destination = auth.NewNullDestination()
 		tempfile    *os.File
 		err         error
 		fileSize    int64 = 1024
+		destination *auth.BufferDestination
 	)
+
+	BeforeEach(func() {
+		tempfile.Seek(0, 0)
+		destination = auth.NewBufferDestination()
+	})
 
 	BeforeSuite(func() {
 		tempfile, err = ioutil.TempFile("", "inputFile")
@@ -81,13 +87,6 @@ var _ = Describe("SloUploader", func() {
 				_, err = NewUploader(destination, 10, "container", "object", tempfile, 0, false, ioutil.Discard)
 				Expect(err).Should(HaveOccurred())
 			})
-		})
-	})
-
-	Describe("Uploader", func() {
-		var destination *auth.BufferDestination = auth.NewBufferDestination()
-		BeforeEach(func() {
-			tempfile.Seek(0, 0)
 		})
 		Context("Uploading test data", func() {
 			It("Should upload the same data that was in the file", func() {
