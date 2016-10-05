@@ -64,6 +64,13 @@ func getNumberChunks(file *os.File, chunkSize uint) (numChunks uint, e error) {
 func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*Uploader, error) {
 
+	if source == nil {
+		return nil, fmt.Errorf("Unable to upload nil file")
+	}
+
+	if maxUploads < 1 {
+		return nil, fmt.Errorf("Unable to upload with %d uploaders (minimum 1 required)", maxUploads)
+	}
 	outputChannel := make(chan string, 10)
 	// Asynchronously print everything that comes in on this channel
 	go func(output io.Writer, incoming chan string) {
