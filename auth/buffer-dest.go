@@ -7,34 +7,38 @@ import (
 
 // closableBuffer wraps the bytes.Buffer with the close method so that it can be used
 // as an io.WriteCloser
-type closableBuffer struct {
-	contents *bytes.Buffer
+type ClosableBuffer struct {
+	Contents *bytes.Buffer
 }
 
-func newClosableBuffer() *closableBuffer {
-	return &closableBuffer{}
+func NewClosableBuffer() *ClosableBuffer {
+	return &ClosableBuffer{Contents: bytes.NewBuffer(make([]byte, 0))}
 }
 
-func (c *closableBuffer) Close() error {
+func (c *ClosableBuffer) Close() error {
 	return nil
 }
 
-func (c *closableBuffer) Write(p []byte) (int, error) {
-	return c.contents.Write(p)
+func (c *ClosableBuffer) Write(p []byte) (int, error) {
+	return c.Contents.Write(p)
 }
 
 // BufferDestination implements the Destination and keeps the observed
 // container names, object names, file data, and manifest data for later
 // retrieval and testing.
 type BufferDestination struct {
-	containers      map[string][]string
-	fileContent     *closableBuffer
-	manifestContent *bytes.Buffer
+	Containers      map[string][]string
+	FileContent     *ClosableBuffer
+	ManifestContent *bytes.Buffer
 }
 
 // NewBufferDestination creates a new instance of BufferDestination
 func NewBufferDestination() *BufferDestination {
-	return &BufferDestination{fileContent: newClosableBuffer()}
+	return &BufferDestination{
+		FileContent:     NewClosableBuffer(),
+		Containers:      make(map[string][]string, 0),
+		ManifestContent: bytes.NewBuffer(make([]byte, 0)),
+	}
 }
 
 // stringInRange returns true when the collection already contains
@@ -52,13 +56,13 @@ func stringInRange(collection []string, str string) bool {
 // handleContainerAndObject creates the container if it doesn't already exist and
 // adds the given object to it, if it doesn't already exist.
 func (b *BufferDestination) handleContainerAndObject(container, object string) {
-	collection, containerExists := b.containers[container]
+	collection, containerExists := b.Containers[container]
 	if !containerExists {
-		b.containers[container] = make([]string, 0)
-		collection = b.containers[container]
+		b.Containers[container] = make([]string, 0)
+		collection = b.Containers[container]
 	}
 	if !stringInRange(collection, object) {
-		b.containers[container] = append(collection, object)
+		b.Containers[container] = append(collection, object)
 	}
 }
 
@@ -66,13 +70,13 @@ func (b *BufferDestination) handleContainerAndObject(container, object string) {
 // that can be written into, though it may not be safe for concurrent operations.
 func (b *BufferDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (io.WriteCloser, error) {
 	b.handleContainerAndObject(container, objectName)
-	return b.fileContent, nil
+	return b.FileContent, nil
 }
 
 // CreateSLO always returns nil.
 func (b *BufferDestination) CreateSLO(containerName, manifestName, manifestEtag string, sloManifestJSON []byte) error {
 	b.handleContainerAndObject(containerName, manifestName)
-	_, err := b.manifestContent.Write(sloManifestJSON)
+	_, err := b.ManifestContent.Write(sloManifestJSON)
 	return err
 }
 
@@ -84,5 +88,5 @@ func (b *BufferDestination) CreateDLO(containerName, manifestName, filenamePrefi
 
 // FileNames returns an empty string slice and nil.
 func (b *BufferDestination) FileNames(container string) ([]string, error) {
-	return b.containers[container], nil
+	return b.Containers[container], nil
 }
