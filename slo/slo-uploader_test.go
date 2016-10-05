@@ -98,11 +98,12 @@ var _ = Describe("SloUploader", func() {
 				fileReadBuffer := make([]byte, fileSize)
 				dataWrittenBuffer := make([]byte, fileSize)
 				tempfile.Seek(0, 0)
-				_, err = tempfile.Read(fileReadBuffer)
+				bytesReadFromTempFile, err := tempfile.Read(fileReadBuffer)
 				if err != nil {
 					Fail(fmt.Sprintf("Unable to read data from temporary file: %s", err))
 				}
-				_, err = destination.FileContent.Contents.Read(dataWrittenBuffer)
+				bytesWrittenToDestination, err := destination.FileContent.Contents.Read(dataWrittenBuffer)
+				Expect(bytesWrittenToDestination).To(Equal(bytesReadFromTempFile))
 				for index, writtenByte := range dataWrittenBuffer {
 					Expect(writtenByte).To(Equal(fileReadBuffer[index]))
 				}
