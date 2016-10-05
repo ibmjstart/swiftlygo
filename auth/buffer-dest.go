@@ -86,13 +86,3 @@ func (b *BufferDestination) CreateDLO(containerName, manifestName, filenamePrefi
 func (b *BufferDestination) FileNames(container string) ([]string, error) {
 	return b.containers[container], nil
 }
-
-// AuthUrl returns the empty string.
-func (b *BufferDestination) AuthUrl() string {
-	return ""
-}
-
-// AuthToken returns the empty string.
-func (b *BufferDestination) AuthToken() string {
-	return ""
-}

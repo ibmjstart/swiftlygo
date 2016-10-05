@@ -40,13 +40,3 @@ func (s NullDestination) CreateDLO(containerName, manifestName, filenamePrefix s
 func (s NullDestination) FileNames(container string) ([]string, error) {
 	return []string{}, nil
 }
-
-// AuthUrl returns the empty string.
-func (s NullDestination) AuthUrl() string {
-	return ""
-}
-
-// AuthToken returns the empty string.
-func (s NullDestination) AuthToken() string {
-	return ""
-}

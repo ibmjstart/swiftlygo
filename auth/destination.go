@@ -17,8 +17,6 @@ type Destination interface {
 	CreateSLO(containerName, manifestName, manifestEtag string, sloManifestJSON []byte) error
 	CreateDLO(containerName, manifestName, filenamePrefix string) error
 	FileNames(container string) ([]string, error)
-	AuthUrl() string
-	AuthToken() string
 }
 
 // SwiftDestination implements the Destination interface for OpenStack Swift.
@@ -34,13 +32,13 @@ func (s *SwiftDestination) CreateFile(container, objectName string, checkHash bo
 
 // CreateSLO sends the provided json to the destination as an SLO manifest.
 func (s *SwiftDestination) CreateSLO(containerName, manifestName, manifestEtag string, sloManifestJSON []byte) error {
-	targetUrl := s.AuthUrl() + "/" + containerName + "/" + manifestName + "?multipart-manifest=put"
+	targetUrl := s.SwiftConnection.StorageUrl + "/" + containerName + "/" + manifestName + "?multipart-manifest=put"
 
 	request, err := http.NewRequest(http.MethodPut, targetUrl, bytes.NewReader(sloManifestJSON))
 	if err != nil {
 		return fmt.Errorf("Failed to create request for uploading manifest file: %s", err)
 	}
-	request.Header.Add("X-Auth-Token", s.AuthToken())
+	request.Header.Add("X-Auth-Token", s.SwiftConnection.AuthToken)
 	request.Header.Add("Content-Length", strconv.Itoa(len(sloManifestJSON)))
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -61,13 +59,13 @@ func (s *SwiftDestination) CreateSLO(containerName, manifestName, manifestEtag s
 // CreateDLO creates a dlo with the provided name and prefix in the given container.
 func (s *SwiftDestination) CreateDLO(containerName, manifestName, filenamePrefix string) error {
 	fullDLOPath := containerName + "/" + manifestName
-	targetURL := s.AuthUrl() + "/" + fullDLOPath
+	targetURL := s.SwiftConnection.StorageUrl + "/" + fullDLOPath
 
 	request, err := http.NewRequest(http.MethodPut, targetURL, nil)
 	if err != nil {
 		return fmt.Errorf("Failed to create request for uploading manifest file: %s", err)
 	}
-	request.Header.Add("X-Auth-Token", s.AuthToken())
+	request.Header.Add("X-Auth-Token", s.SwiftConnection.AuthToken)
 	request.Header.Add("X-Object-Manifest", filenamePrefix)
 
 	response, err := http.DefaultClient.Do(request)
@@ -85,17 +83,6 @@ func (s *SwiftDestination) FileNames(container string) ([]string, error) {
 	return s.SwiftConnection.ObjectNamesAll(container, nil)
 }
 
-// AuthUrl retrieves the Authentication URL for this destination.
-func (s *SwiftDestination) AuthUrl() string {
-	return s.SwiftConnection.StorageUrl
-}
-
-// AuthToken returns the authentication token for this destination.
-func (s *SwiftDestination) AuthToken() string {
-	return s.SwiftConnection.AuthToken
-}
-
-// GetAuthVersion extracts the OpenStack auth version from the end of an authURL.
 func getAuthVersion(url string) (int, error) {
 	// Extract auth version from auth URL
 	authVersionRegex, err := regexp.Compile(".*/v([0-9])[.0-9]*/?$")
