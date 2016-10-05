@@ -1,7 +1,8 @@
-package slo
+package slo_test
 
 import (
 	"github.ibm.com/ckwaldon/swiftlygo/auth"
+	. "github.ibm.com/ckwaldon/swiftlygo/slo"
 
 	"fmt"
 	. "github.com/onsi/ginkgo"
