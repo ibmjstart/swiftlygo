@@ -23,7 +23,7 @@ func (n nullWriteCloser) Write(p []byte) (int, error) {
 }
 
 func (n NullDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (io.WriteCloser, error) {
-	return NullWriteCloser(0), nil
+	return nullWriteCloser(0), nil
 }
 
 // CreateSLO always returns nil.
