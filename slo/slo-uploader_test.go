@@ -4,6 +4,7 @@ import (
 	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	. "github.ibm.com/ckwaldon/swiftlygo/slo"
 
+	"bytes"
 	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -171,6 +172,46 @@ var _ = Describe("Uploader", func() {
 
 				// Check that the excluded chunk was not uploaded
 				Expect(destination.Containers["container"]).ShouldNot(ContainElement(chunkName))
+			})
+		})
+		Context("Uploading from previous manifest file", func() {
+			It("Should acknowledge reading the old manifest", func() {
+				outputWriter := bytes.NewBuffer(make([]byte, 1024))
+				uploader, err := NewUploader(destination, 10, "container", "object", tempfile, 1, false, outputWriter)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = uploader.UploadFromPrevious([]byte("[]"))
+				Expect(err).ShouldNot(HaveOccurred())
+				fileReadBuffer := make([]byte, fileSize)
+				dataWrittenBuffer := make([]byte, fileSize)
+				tempfile.Seek(0, 0)
+				bytesReadFromTempFile, err := tempfile.Read(fileReadBuffer)
+				if err != nil {
+					Fail(fmt.Sprintf("Unable to read data from temporary file: %s", err))
+				}
+				bytesWrittenToDestination, err := destination.FileContent.Contents.Read(dataWrittenBuffer)
+				Expect(bytesWrittenToDestination).To(Equal(bytesReadFromTempFile))
+				stringOutput := outputWriter.String()
+				Expect(stringOutput).Should(ContainSubstring("Restoring from saved manifest"))
+			})
+			It("Should only prepare chunks that aren't in the old manifest", func() {
+				oldManifest := "[{path: \"object-part-0000-chunk-size-10\", etag:\"DOESNTMATTER\", size_bytes:10}]"
+				outputWriter := bytes.NewBuffer(make([]byte, 1024))
+				uploader, err := NewUploader(destination, 10, "container", "object", tempfile, 1, false, outputWriter)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = uploader.UploadFromPrevious([]byte(oldManifest))
+				Expect(err).ShouldNot(HaveOccurred())
+				fileReadBuffer := make([]byte, fileSize)
+				dataWrittenBuffer := make([]byte, fileSize)
+				tempfile.Seek(0, 0)
+				bytesReadFromTempFile, err := tempfile.Read(fileReadBuffer)
+				if err != nil {
+					Fail(fmt.Sprintf("Unable to read data from temporary file: %s", err))
+				}
+				bytesWrittenToDestination, err := destination.FileContent.Contents.Read(dataWrittenBuffer)
+				Expect(bytesWrittenToDestination).To(Equal(bytesReadFromTempFile))
+				stringOutput := outputWriter.String()
+				Expect(stringOutput).ShouldNot(ContainSubstring("Preparing chunk %d", 0))
+				Expect(stringOutput).Should(ContainSubstring("Preparing chunk %d", 1))
 			})
 		})
 	})
