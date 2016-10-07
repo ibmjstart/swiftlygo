@@ -65,18 +65,12 @@ func (m *manifest) Etag() string {
 
 // getChunkNameTemplate returns the template for the names of chunks of this file.
 func (m *manifest) getChunkNameTemplate() string {
-	return m.Name + "-part-%s-chunk-size-" + strconv.Itoa(int(m.ChunkSize))
+	return m.Name + "-part-%04d-chunk-size-" + strconv.Itoa(int(m.ChunkSize))
 }
 
 // getNameForChunk returns the object storage name for this file chunk.
 func (m *manifest) getNameForChunk(chunkNumber uint) string {
-	return fmt.Sprintf(m.getChunkNameTemplate(), fmt.Sprintf("%04d", chunkNumber))
-}
-
-// getFileNameRegex returns a regular expression for extracting the chunk numbers
-// out of chunk file names for the current SLO.
-func (m *manifest) GetChunkNameRegex() string {
-	return fmt.Sprintf(m.getChunkNameTemplate(), "([0-9]+)")
+	return fmt.Sprintf(m.getChunkNameTemplate(), chunkNumber)
 }
 
 // Add inserts the information for a given chunk into the manifest.
