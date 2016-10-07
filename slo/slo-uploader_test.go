@@ -14,7 +14,6 @@ import (
 
 var _ = Describe("Uploader", func() {
 	var (
-		destination auth.Destination = auth.NewNullDestination()
 		tempfile    *os.File
 		err         error
 		fileSize    int64 = 1024
@@ -51,12 +50,6 @@ var _ = Describe("Uploader", func() {
 				_, err = NewUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
-			It("Should upload successfully", func() {
-				uploader, err := NewUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
-				Expect(err).ShouldNot(HaveOccurred())
-				err = uploader.Upload()
-				Expect(err).ShouldNot(HaveOccurred())
-			})
 		})
 		Context("With invalid chunk size", func() {
 			It("Should return an error", func() {
@@ -86,6 +79,16 @@ var _ = Describe("Uploader", func() {
 			It("Should return an error", func() {
 				_, err = NewUploader(destination, 10, "container", "object", tempfile, 0, false, ioutil.Discard)
 				Expect(err).Should(HaveOccurred())
+			})
+		})
+	})
+	Describe("Performing an upload", func() {
+		Context("With valid constructor input", func() {
+			It("Should upload successfully", func() {
+				uploader, err := NewUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = uploader.Upload()
+				Expect(err).ShouldNot(HaveOccurred())
 			})
 		})
 		Context("Uploading test data", func() {
@@ -124,6 +127,50 @@ var _ = Describe("Uploader", func() {
 				for index, writtenByte := range dataWrittenBuffer {
 					Expect(writtenByte).To(Equal(fileReadBuffer[index]))
 				}
+			})
+		})
+		Context("Uploading only missing file chunks", func() {
+			It("Should only attempt to upload the missing pieces", func() {
+				chunkName := "object-part-0000-chunk-size-10"
+				destination.Containers["container"] = append(destination.Containers["container"], chunkName)
+				chunkSize := 10
+				uploader, err := NewUploader(destination, uint(chunkSize), "container", "object", tempfile, 1, true, ioutil.Discard)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = uploader.Upload()
+				Expect(err).ShouldNot(HaveOccurred())
+				fileReadBuffer := make([]byte, fileSize)
+				dataWrittenBuffer := make([]byte, fileSize)
+				tempfile.Seek(0, 0)
+				bytesReadFromTempFile, err := tempfile.Read(fileReadBuffer)
+				if err != nil {
+					Fail(fmt.Sprintf("Unable to read data from temporary file: %s", err))
+				}
+				bytesWrittenToDestination, err := destination.FileContent.Contents.Read(dataWrittenBuffer)
+				// Check that a single chunk was not written
+				Expect(bytesWrittenToDestination + chunkSize).To(Equal(bytesReadFromTempFile))
+			})
+		})
+		Context("Uploading with chunks excluded", func() {
+			It("Should only upload non-excluded chunks", func() {
+				chunkName := "object-part-0000-chunk-size-10"
+				chunkSize := 10
+				uploader, err := NewUploader(destination, uint(chunkSize), "container", "object", tempfile, 1, true, ioutil.Discard)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = uploader.Upload(0) // exclude chunk 0
+				Expect(err).ShouldNot(HaveOccurred())
+				fileReadBuffer := make([]byte, fileSize)
+				dataWrittenBuffer := make([]byte, fileSize)
+				tempfile.Seek(0, 0)
+				bytesReadFromTempFile, err := tempfile.Read(fileReadBuffer)
+				if err != nil {
+					Fail(fmt.Sprintf("Unable to read data from temporary file: %s", err))
+				}
+				bytesWrittenToDestination, err := destination.FileContent.Contents.Read(dataWrittenBuffer)
+				// Check that a single chunk was not written
+				Expect(bytesWrittenToDestination + chunkSize).To(Equal(bytesReadFromTempFile))
+
+				// Check that the excluded chunk was not uploaded
+				Expect(destination.Containers["container"]).ShouldNot(ContainElement(chunkName))
 			})
 		})
 	})
