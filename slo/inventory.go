@@ -46,7 +46,7 @@ func (i *inventory) TakeInventory() error {
 	for _, name := range containerFiles {
 		// Ignoring error because it's possible that files are not part of
 		// the current SLO and will not match the naming convention
-		numScanned, err := fmt.Sscanf(i.manifest.getChunkNameTemplate(), name, &number)
+		numScanned, err := fmt.Sscanf(name, i.manifest.getChunkNameTemplate(), &number)
 		if err != nil || numScanned < 1 {
 			continue
 		}
