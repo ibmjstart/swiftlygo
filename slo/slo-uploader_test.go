@@ -194,7 +194,7 @@ var _ = Describe("Uploader", func() {
 				Expect(stringOutput).Should(ContainSubstring("Restoring from saved manifest"))
 			})
 			It("Should only prepare chunks that aren't in the old manifest", func() {
-				oldManifest := "[{path: \"object-part-0000-chunk-size-10\", etag:\"DOESNTMATTER\", size_bytes:10}]"
+				oldManifest := "[{\"path\": \"container/object-part-0000-chunk-size-10\", \"etag\":\"DOESNTMATTER\", \"size_bytes\":10}]"
 				outputWriter := bytes.NewBuffer(make([]byte, 1024))
 				uploader, err := NewUploader(destination, 10, "container", "object", tempfile, 1, false, outputWriter)
 				Expect(err).ShouldNot(HaveOccurred())
