@@ -62,18 +62,26 @@ func (m *manifestBuilder) Build() {
 // missing chunks of the manifest..
 func (m *manifestBuilder) BuildFromExisting(jsonManifest []byte) {
 	m.output <- "Restoring from saved manifest"
+	m.output <- fmt.Sprintf("JSON data: %s", string(jsonManifest))
 	jsonData := make([]struct {
 		Path string `json:"path"`
 		Etag string `json:"etag"`
 		Size uint   `json:"size_bytes"`
 	}, 1000)
-	format := m.manifest.ContainerName + "/" + fmt.Sprintf(m.manifest.getChunkNameTemplate(), "%04d")
+	format := m.manifest.ContainerName + "/" + m.manifest.getChunkNameTemplate()
 	added := make([]bool, m.manifest.NumberChunks)
-	json.Unmarshal(jsonManifest, &jsonData)
-	for _, dataStruct := range jsonData {
+	err := json.Unmarshal(jsonManifest, &jsonData)
+	if err != nil {
+		m.output <- fmt.Sprintf("Error reading manifest JSON: %s", err)
+		m.output <- "Ignoring malformed manifest and rebuilding..."
+		m.Build()
+		return
+	}
+	for index, dataStruct := range jsonData {
 		chunkNumber := uint(0)
 		numScanned, err := fmt.Sscanf(dataStruct.Path, format, &chunkNumber)
 		if err != nil || numScanned < 1 {
+			m.output <- fmt.Sprintf("Problem parsing manifest entry %d: %v", index, dataStruct)
 			continue
 		}
 		m.manifest.Add(chunkNumber, dataStruct.Etag, dataStruct.Size)
