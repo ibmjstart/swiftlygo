@@ -3,8 +3,6 @@ package slo
 import (
 	"fmt"
 	"github.ibm.com/ckwaldon/swiftlygo/auth"
-	"regexp"
-	"strconv"
 )
 
 type inventory struct {
@@ -43,20 +41,13 @@ func (i *inventory) TakeInventory() error {
 	if err != nil {
 		return fmt.Errorf("Unable to fetch container names: %s", err)
 	}
-	fileNameRegex, err := regexp.Compile(i.manifest.GetChunkNameRegex())
-	if err != nil {
-		return fmt.Errorf("Unable to compile regex to search existing file names: %s", err)
-	}
 	numberFilesAlreadyUploaded := 0
+	var number uint
 	for _, name := range containerFiles {
 		// Ignoring error because it's possible that files are not part of
 		// the current SLO and will not match the naming convention
-		numberString := fileNameRegex.FindStringSubmatch(name)
-		if numberString == nil || len(numberString) < 2 {
-			continue
-		}
-		number, err := strconv.Atoi(numberString[1])
-		if err != nil {
+		numScanned, err := fmt.Sscanf(name, i.manifest.getChunkNameTemplate(), &number)
+		if err != nil || numScanned < 1 {
 			continue
 		}
 		i.uploadNeeded[number] = false
