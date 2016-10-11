@@ -58,7 +58,7 @@ func (s *SwiftDestination) CreateSLO(containerName, manifestName, manifestEtag s
 
 // CreateDLO creates a dlo with the provided name and prefix in the given container.
 func (s *SwiftDestination) CreateDLO(manifestContainer, manifestName, objectContainer, filenamePrefix string) error {
-	manifest := objectContainer + filenamePrefix
+	manifest := objectContainer + "/" + filenamePrefix
 	targetURL := s.SwiftConnection.StorageUrl + "/" + manifestContainer + "/" + manifestName
 
 	request, err := http.NewRequest(http.MethodPut, targetURL, nil)
