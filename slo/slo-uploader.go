@@ -75,7 +75,10 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	// Asynchronously print everything that comes in on this channel
 	go func(output io.Writer, incoming chan string) {
 		for message := range incoming {
-			fmt.Fprintln(output, message)
+			_, err := fmt.Fprintln(output, message)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error writing to output log: %s", err)
+			}
 		}
 	}(outputFile, outputChannel)
 
