@@ -67,7 +67,7 @@ have been uploaded, the SLO manifest file will be uploaded. If this process is c
 You will be able to reference the entire file by the name of the manifest.
 
 Unfortunately, network problems and hard drive failures exist. Here are some robustness/troubleshooting hints:
-- The SLO manifest file is generated while the uploads are in progress. In order to generate the manifest, each chunks of the file must be hashed. If you upload fails, this progress is lost. If/when you retry the upload, even if you opt to upload only missing chunks (see below), you will still need to hash the chunks that you've already uploaded to regenerate the part of the manifest that references those chunks. This can be extremely slow, but it can be worked around. The current state of the manifest file is exposed by `slo.Uploader.ManifestJSON`. You can save this json data and use it to retry later (on a different instance of `slo.Uploader`) with the `slo.Uploader.UploadFromPrevious` method.
+- The SLO manifest file is generated while the uploads are in progress. In order to generate the manifest, each chunks of the file must be hashed. If your upload fails, this progress is lost. If/when you retry the upload, even if you opt to upload only missing chunks (see below), you will still need to hash the chunks that you've already uploaded to regenerate the part of the manifest that references those chunks. This can be extremely slow, but it can be worked around. The current state of the manifest file is exposed by `slo.Uploader.ManifestJSON`. You can save this json data and use it to retry later (on a different instance of `slo.Uploader`) with the `slo.Uploader.UploadFromPrevious` method.
 - If your upload is interrupted, you can ensure that the boolean `onlyMissing` parameter to `slo.NewUploader` is set to `true`, which will skip all uploads for which the files are already present within the targeted object storage container.
 - If you are unable to read a chunk of your file for some reason, you can pass the chunk number(s) to `slo.Uploader.Upload` as one of the `excludedChunks` parameters. This will skip the upload step for that chunk.
 
@@ -111,7 +111,44 @@ func main() {
 
 ### DLOs
 
-TODO: Ryan
+DLOs are slightly different from SLOs in that they allow their segments to be uploaded independently from the 
+manifest file. DLO manifests have an attribute that defines a container and prefix. Any files in this container 
+with the specified prefix will become segments of the DLO, regardless of whether they were uploaded before, after 
+or at the same time as the manifest. All files meeting these criteria will be downloaded as one file (composed in
+lexicographical order) when the DLO is downloaded.
+
+Here's an example of using the DLO API to create a manifest.
+```go
+package example
+
+import (
+	"github.com/ibmjstart/swiftlygo/auth"
+	"github.com/ibmjstart/swiftlygo"
+	"os"
+)
+
+func main() {
+	//using object storage credentials from VCAP.json or similar
+	destination, err := auth.Authenticate("username", "apikey", "authurl", "domain", "tenant")
+	if err != nil {
+		// connection failed, handle appropriately
+	}
+	
+	uploader, err := slo.NewDloManifestUploader(destination,
+		"dlo container name",//name of the container the manifest will be created in
+		"manifest name",
+		"object container",//name of the container the DLO's segments will be in
+		"prefix-")//prefix for files that are segments of this DLO
+	if err != nil {
+		// there was an error preparing the upload, handle appropriately
+	}
+	
+	err = uploader.Upload()
+	if err != nil {
+		// there was an error uploading your SLO, handle appropriately
+	}
+}
+```
 
 ### File Uploads
 
