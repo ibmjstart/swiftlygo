@@ -133,7 +133,6 @@ func main() {
 	if err != nil {
 		// connection failed, handle appropriately
 	}
-	
 	uploader, err := slo.NewDloManifestUploader(destination,
 		"dlo container name",//name of the container the manifest will be created in
 		"manifest name",
@@ -142,17 +141,52 @@ func main() {
 	if err != nil {
 		// there was an error preparing the upload, handle appropriately
 	}
-	
 	err = uploader.Upload()
 	if err != nil {
-		// there was an error uploading your SLO, handle appropriately
+		// there was an error uploading your DLO, handle appropriately
 	}
 }
 ```
 
 ### File Uploads
 
-TODO: Ryan
+The upload of single files to Object Storage is also supported. These can be standalone files or parts of a DLO 
+if they are uploaded to the appropriate container and their name is prefixed properly. For example, a file given 
+name "prefix-filename.txt" in container "object container" would become a part of the DLO created in the previous
+example.
+
+Here's an example of using the file upload API to create an object.
+```go
+package example
+
+import (
+	"github.com/ibmjstart/swiftlygo/auth"
+	"github.com/ibmjstart/swiftlygo"
+	"os"
+)
+
+func main() {
+	//using object storage credentials from VCAP.json or similar
+	destination, err := auth.Authenticate("username", "apikey", "authurl", "domain", "tenant")
+	if err != nil {
+		// connection failed, handle appropriately
+	}
+	uploadFile, err := os.Open("file/path")
+	if err != nil {
+		// reading file failed, handle appropriately
+	}
+	uploader, err := slo.NewObjectUploader(destination,
+		"object container",//name of the container to upload to
+		"prefix-filename.txt")//name of the object
+	if err != nil {
+		// there was an error preparing the upload, handle appropriately
+	}
+	err = uploader.Upload()
+	if err != nil {
+		// there was an error uploading your object, handle appropriately
+	}
+}
+```
 
 ## Contribute
 
