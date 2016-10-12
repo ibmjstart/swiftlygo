@@ -81,7 +81,7 @@ func (b *BufferDestination) CreateSLO(containerName, manifestName, manifestEtag 
 }
 
 // CreateDLO always returns nil.
-func (b *BufferDestination) CreateDLO(containerName, manifestName, filenamePrefix string) error {
+func (b *BufferDestination) CreateDLO(containerName, manifestName, objectContainer, filenamePrefix string) error {
 	b.handleContainerAndObject(containerName, manifestName)
 	return nil
 }
