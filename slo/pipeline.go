@@ -1,6 +1,8 @@
 package slo
 
-import ()
+import (
+	"io"
+)
 
 // Chunk represents a single region of a file.
 //
@@ -49,4 +51,13 @@ func min(a, b uint) uint {
 		return a
 	}
 	return b
+}
+
+// ReadData populates the Chunk structs that come in on the chunks channel
+// with the data from the dataSource corresponding to that chunk's region
+// of the file and sends its errors back on the errors channel.
+func ReadData(chunks <-chan Chunk, errors chan<- error, dataSource io.ReaderAt) <-chan Chunk {
+	dataChunks := make(chan Chunk)
+	defer close(dataChunks)
+	return dataChunks
 }
