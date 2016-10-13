@@ -72,15 +72,18 @@ var _ = Describe("Pipeline", func() {
 				dataSource := nullReaderAt{}
 				count := 0
 				numChunks := 5
-				chunkChan := make(chan Chunk, numChunks)
+				chunkSize := 5
+				chunkChan := make(chan FileChunk, numChunks)
 				errorChan := make(chan error, numChunks)
 				outChunks := ReadData(chunkChan, errorChan, dataSource)
 				for i := 0; i < numChunks; i++ {
-					chunkChan <- Chunk{
-						Size:   5,
-						Number: 0,
+					chunkChan <- FileChunk{
+						Size:   uint(chunkSize),
+						Number: uint(i),
+						Offset: uint(i * chunkSize),
 					}
 				}
+				close(chunkChan)
 				for _ = range outChunks {
 					count++
 				}
@@ -100,21 +103,27 @@ var _ = Describe("Pipeline", func() {
 				chunkSize := 5
 				bufferLen := numChunks * chunkSize
 				dataSource := filebuffer.New(make([]byte, bufferLen))
-				outData := make([]byte, bufferLen)
+				outData := make([]byte, 0)
 				count := 0
-				chunkChan := make(chan Chunk, numChunks)
+				chunkChan := make(chan FileChunk, numChunks)
 				errorChan := make(chan error, numChunks)
-				outChunks := ReadData(chunkChan, errorChan, dataSource)
 				for i := 0; i < bufferLen; i++ {
 					_, _ = dataSource.Write([]byte{byte(i)})
 				}
+				dataSource.Seek(0, 0)
+				fmt.Fprintf(GinkgoWriter, "\nInput Data: %v\n", dataSource.Bytes())
+				dataSource.Seek(0, 0)
+				outChunks := ReadData(chunkChan, errorChan, dataSource)
 				for i := 0; i < numChunks; i++ {
-					chunkChan <- Chunk{
+					chunkChan <- FileChunk{
 						Size:   uint(chunkSize),
 						Number: uint(i),
+						Offset: uint(i * chunkSize),
 					}
 				}
+				close(chunkChan)
 				for chunk := range outChunks {
+					fmt.Fprintf(GinkgoWriter, "Data chunk: %v\n", chunk.Data)
 					outData = append(outData, chunk.Data...)
 					Expect(len(chunk.Data)).To(BeNumerically("<=", chunkSize))
 					count++
@@ -122,7 +131,8 @@ var _ = Describe("Pipeline", func() {
 				close(errorChan)
 				dataSource.Seek(0, 0)
 				Expect(count).To(Equal(numChunks))
-				Expect(outData).To(Equal(dataSource.Bytes()))
+				fmt.Fprintf(GinkgoWriter, "Output Data: %v\n", outData)
+				Expect(outData[:bufferLen]).To(Equal(dataSource.Bytes()[:bufferLen]))
 				errCount := 0
 				for e := range errorChan {
 					Expect(e).To(BeNil())
