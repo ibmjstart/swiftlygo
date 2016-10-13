@@ -85,3 +85,11 @@ func ReadData(chunks <-chan FileChunk, errors chan<- error, dataSource io.Reader
 	}()
 	return dataChunks
 }
+
+func HashData(chunk <-chan FileChunk, errors chan<- error) <-chan FileChunk {
+	dataChunks := make(chan FileChunk)
+	go func() {
+		defer close(dataChunks)
+	}()
+	return dataChunks
+}

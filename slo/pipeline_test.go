@@ -142,4 +142,71 @@ var _ = Describe("Pipeline", func() {
 			})
 		})
 	})
+	Describe("HashData", func() {
+		Context("With chunk that are missing data", func() {
+			It("Should return an error for each chunk", func() {
+				numChunks := 5
+				chunkSize := 5
+				count := 0
+				chunkChan := make(chan FileChunk, numChunks)
+				errorChan := make(chan error, numChunks)
+				outChunks := HashData(chunkChan, errorChan)
+				for i := 0; i < numChunks; i++ {
+					chunkChan <- FileChunk{
+						Size:   uint(chunkSize),
+						Number: uint(i),
+						Offset: uint(i * chunkSize),
+					}
+				}
+				close(chunkChan)
+				for _ = range outChunks {
+					count++
+				}
+				close(errorChan)
+				Expect(count).To(Equal(0))
+				errCount := 0
+				for e := range errorChan {
+					Expect(e).To(BeNil())
+					errCount++
+				}
+				Expect(errCount).To(Equal(numChunks))
+			})
+		})
+		Context("With valid chunks", func() {
+			It("Should yield FileChunks with their hashes", func() {
+				numChunks := 5
+				chunkSize := 5
+				bufferLen := numChunks * chunkSize
+				data := make([]byte, 0)
+				count := 0
+				chunkChan := make(chan FileChunk, numChunks)
+				errorChan := make(chan error, numChunks)
+				for i := 0; i < bufferLen; i++ {
+					data = append(data, byte(i))
+				}
+				outChunks := HashData(chunkChan, errorChan)
+				for i := 0; i < numChunks; i++ {
+					chunkChan <- FileChunk{
+						Size:   uint(chunkSize),
+						Number: uint(i),
+						Offset: uint(i * chunkSize),
+						Data:   data[i*chunkSize : (i+1)*chunkSize],
+					}
+				}
+				close(chunkChan)
+				for chunk := range outChunks {
+					Expect(chunk.Hash).ToNot(Equal(""))
+					count++
+				}
+				close(errorChan)
+				Expect(count).To(Equal(numChunks))
+				errCount := 0
+				for e := range errorChan {
+					Expect(e).To(BeNil())
+					errCount++
+				}
+				Expect(errCount).To(Equal(0))
+			})
+		})
+	})
 })
