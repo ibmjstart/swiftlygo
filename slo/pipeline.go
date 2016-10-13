@@ -1,6 +1,8 @@
 package slo
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"io"
 )
@@ -59,7 +61,8 @@ func min(a, b uint) uint {
 
 // ReadData populates the FileChunk structs that come in on the chunks channel
 // with the data from the dataSource corresponding to that chunk's region
-// of the file and sends its errors back on the errors channel.
+// of the file and sends its errors back on the errors channel. In order to work
+// ReadData needs chunks with the Size and Offset properties set.
 func ReadData(chunks <-chan FileChunk, errors chan<- error, dataSource io.ReaderAt) <-chan FileChunk {
 	dataChunks := make(chan FileChunk)
 	go func() {
@@ -86,10 +89,21 @@ func ReadData(chunks <-chan FileChunk, errors chan<- error, dataSource io.Reader
 	return dataChunks
 }
 
-func HashData(chunk <-chan FileChunk, errors chan<- error) <-chan FileChunk {
+// HashData attaches the hash of a FileChunk's data. Do not give it FileChunks without
+// Data attached. It returns errors if you do.
+func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
 	dataChunks := make(chan FileChunk)
 	go func() {
 		defer close(dataChunks)
+		for chunk := range chunks {
+			if len(chunk.Data) < 1 {
+				errors <- fmt.Errorf("Chunks should have data before being hashed, chunk %v lacks data", chunk)
+				continue
+			}
+			sum := md5.Sum(chunk.Data)
+			chunk.Hash = hex.EncodeToString(sum[:])
+			dataChunks <- chunk
+		}
 	}()
 	return dataChunks
 }

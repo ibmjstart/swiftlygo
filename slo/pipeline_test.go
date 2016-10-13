@@ -166,7 +166,7 @@ var _ = Describe("Pipeline", func() {
 				Expect(count).To(Equal(0))
 				errCount := 0
 				for e := range errorChan {
-					Expect(e).To(BeNil())
+					Expect(e).ToNot(BeNil())
 					errCount++
 				}
 				Expect(errCount).To(Equal(numChunks))
