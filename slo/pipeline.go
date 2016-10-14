@@ -92,6 +92,41 @@ func ReadData(chunks <-chan FileChunk, errors chan<- error, dataSource io.Reader
 	return dataChunks
 }
 
+// Map applies the provided operation to each chunk that passes through it. It sends errors from
+// the operation to the errors channel, and will not send on a FileChunk that caused an error in
+// the operation.
+func Map(chunks <-chan FileChunk, errors chan<- error, operation func(FileChunk) (FileChunk, error)) <-chan FileChunk {
+	dataChunks := make(chan FileChunk)
+	go func() {
+		defer close(dataChunks)
+		for chunk := range chunks {
+			if newChunk, err := operation(chunk); err != nil {
+				errors <- err
+			} else {
+				dataChunks <- newChunk
+			}
+		}
+	}()
+	return dataChunks
+}
+
+// Filter applies the provided closure to every FileChunk, passing on only FileChunks that satisfy the
+// closure's boolean output. If the closure returns an error, that will be passed on the errors channel.
+func Filter(chunks <-chan FileChunk, errors chan<- error, filter func(FileChunk) (bool, error)) <-chan FileChunk {
+	dataChunks := make(chan FileChunk)
+	go func() {
+		defer close(dataChunks)
+		for chunk := range chunks {
+			if ok, err := filter(chunk); err != nil {
+				errors <- err
+			} else if ok {
+				dataChunks <- chunk
+			}
+		}
+	}()
+	return dataChunks
+}
+
 // HashData attaches the hash of a FileChunk's data. Do not give it FileChunks without
 // Data attached. It returns errors if you do.
 func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
