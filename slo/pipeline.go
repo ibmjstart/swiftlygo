@@ -3,6 +3,7 @@ package slo
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"io"
@@ -27,6 +28,11 @@ type FileChunk struct {
 	Data      []byte
 	Size      uint
 	Offset    uint
+}
+
+// MarshalJSON defines the tranformation from a FileChunk to an SLO manifest entry
+func (f FileChunk) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("{\"path\":\"%s\",\"etag\":\"%s\",\"size_bytes\":%d}", f.Container+"/"+f.Object, f.Hash, f.Size)), nil
 }
 
 // BuildChunks sends back a channel of FileChunk structs, each with Size of chunkSize
@@ -90,6 +96,52 @@ func ReadData(chunks <-chan FileChunk, errors chan<- error, dataSource io.Reader
 		}
 	}()
 	return dataChunks
+}
+
+// ManifestBuilder accepts FileChunks and creates SLO manifests out of them. If there are more than
+// 1000 chunks, it will emit multiple FileChunks, each of which contains an SLO manifest for that region
+// of the file. The FileChunks that are emitted have a Number (which is their manifest number), Data
+// (the JSON of the manifest), and a Size (number of bytes in manifest JSON). They will need to be
+// assigned and Object and Container before they can be uploaded.
+func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
+	manifestOut := make(chan FileChunk)
+	go func() {
+		defer close(manifestOut)
+		masterManifest := make([]FileChunk, 1000)
+		for chunk := range chunks {
+			for chunk.Number >= uint(len(masterManifest)) {
+				temp := make([]FileChunk, len(masterManifest)+1000)
+				copy(masterManifest, temp)
+				masterManifest = temp
+			}
+			masterManifest[chunk.Number] = chunk
+		}
+		for i := 0; i < len(masterManifest)/1000; i++ {
+			var data []FileChunk
+			if (i+1)*1000 > len(masterManifest) {
+				data = masterManifest[i*1000 : len(masterManifest)-i*1000]
+			} else {
+				data = masterManifest[i*1000 : (i+1)*1000]
+			}
+			etags := ""
+			for _, chunk := range data {
+				etags += chunk.Hash
+			}
+			sum := md5.Sum([]byte(etags))
+			json, err := json.Marshal(data)
+			if err != nil {
+				errors <- fmt.Errorf("Error generating JSON manifest for manifest %d: %s", i, err)
+				continue
+			}
+			manifestOut <- FileChunk{
+				Hash:   hex.EncodeToString(sum[:]),
+				Number: uint(i),
+				Data:   json,
+				Size:   uint(len(json)),
+			}
+		}
+	}()
+	return manifestOut
 }
 
 // Map applies the provided operation to each chunk that passes through it. It sends errors from
