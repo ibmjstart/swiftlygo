@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mattetti/filebuffer"
 	"github.ibm.com/ckwaldon/swiftlygo/auth"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -248,7 +249,7 @@ var _ = Describe("Pipeline", func() {
 		Context("When uploading valid chunks", func() {
 			It("Sends back no errors", func() {
 				dest = auth.NewBufferDestination()
-				outChan = UploadData(chunkChan, errorChan, dest)
+				outChan = UploadData(chunkChan, errorChan, dest, time.Duration(0))
 				for i = 0; i < numChunks; i++ {
 					chunkChan <- FileChunk{
 						Size:      chunkSize,
@@ -279,7 +280,7 @@ var _ = Describe("Pipeline", func() {
 					chunkStart uint = 0
 				)
 				dest = auth.NewBufferDestination()
-				outChan = UploadData(chunkChan, errorChan, dest)
+				outChan = UploadData(chunkChan, errorChan, dest, time.Duration(0))
 
 				for _, chunk := range []FileChunk{
 					FileChunk{ //missing Size
@@ -341,7 +342,7 @@ var _ = Describe("Pipeline", func() {
 		Context("When uploading to a bad destination", func() {
 			It("Generates an error for each failed upload", func() {
 				dest = auth.NewErrorDestination()
-				outChan = UploadData(chunkChan, errorChan, dest)
+				outChan = UploadData(chunkChan, errorChan, dest, time.Duration(0))
 				for i = 0; i < numChunks; i++ {
 					chunkChan <- FileChunk{
 						Size:      chunkSize,

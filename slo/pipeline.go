@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"io"
+	"sync"
+	"time"
 )
 
 // FileChunk represents a single region of a file.
@@ -113,13 +115,64 @@ func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
 // the objects in their Container with their Object name and checks the md5 of the upload,
 // retrying on failure. It requires all fields of the FileChunk to be filled out before
 // attempting an upload, and will send errors if it encountes FileChunks with missing
-// fields.
-func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destination) <-chan FileChunk {
+// fields. The retry wait is the base wait before a retry is attempted.
+func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destination, retryWait time.Duration) <-chan FileChunk {
+	const maxAttempts = 5
+	var wg sync.WaitGroup
 	dataChunks := make(chan FileChunk)
+	attempt := func(chunk FileChunk) error {
+		upload, err := dest.CreateFile(chunk.Container, chunk.Object, true, chunk.Hash)
+		if err != nil {
+			return fmt.Errorf("Err creating upload for chunk %v: %s", chunk, err)
+		}
+		written, err := upload.Write(chunk.Data)
+		if err != nil {
+			return fmt.Errorf("Err uploading data for chunk %v: %s", chunk, err)
+		}
+		if uint(written) != chunk.Size {
+			return fmt.Errorf("Problem uploading chunk %v, uploaded %d bytes but chunk is %d bytes long", chunk, written, chunk.Size)
+		}
+		err = upload.Close()
+		if err != nil {
+			return fmt.Errorf("Err closing upload for chunk %v: %s", chunk, err)
+		}
+		return nil
+	}
+	retry := func(chunk FileChunk, initialErr error) {
+		defer wg.Done()
+		var sleep uint = 1
+		outerr := fmt.Errorf("\n%v", initialErr)
+		for err := fmt.Errorf(""); err != nil; sleep++ { // retry
+			time.Sleep(retryWait * (1 << sleep))
+			err = attempt(chunk)
+			if err != nil {
+				outerr = fmt.Errorf("%v,\n%v", outerr, err)
+				if sleep >= maxAttempts {
+					errors <- fmt.Errorf("Final upload attempt for chunk %v failed with errors: %v", chunk, outerr)
+					return
+				}
+			}
+		}
+		dataChunks <- chunk
+	}
 	go func() {
 		defer close(dataChunks)
-		for _ = range chunks {
+		for chunk := range chunks {
+			if chunk.Size < 1 || uint(len(chunk.Data)) != chunk.Size ||
+				chunk.Object == "" || chunk.Container == "" || chunk.Hash == "" {
+
+				errors <- fmt.Errorf("Chunk %v is missing required data", chunk)
+				continue
+			}
+			err := attempt(chunk)
+			if err != nil {
+				go retry(chunk, err)
+				wg.Add(1)
+				continue
+			}
+			dataChunks <- chunk
 		}
+		wg.Wait()
 	}()
 	return dataChunks
 }
