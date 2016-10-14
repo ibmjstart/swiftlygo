@@ -182,3 +182,71 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 	}()
 	return dataChunks
 }
+
+// Count represents basic statistics about the data that has passed through
+// a Counter pipeline stage. It records the total Bytes of data that it has
+// seen, as well as the number of chunks and the duration since the
+// associated Counter stage was started. This information can be used to
+// calculate statistics about the pipeline's performance, especially when
+// multiple counters in different pipeline regions are employed.
+type Count struct {
+	Bytes   uint
+	Chunks  uint
+	Elapsed time.Duration
+}
+
+// Counter provides basic information on the data that passes through it.
+// Be careful to read the outbound Count channel to prevent blocking
+// the flow of data through it.
+func Counter(chunks <-chan FileChunk) (<-chan FileChunk, <-chan Count) {
+	outChunks := make(chan FileChunk)
+	outCount := make(chan Count, 1)
+	started := time.Now()
+	current := Count{
+		Bytes:  0,
+		Chunks: 0,
+	}
+	go func() {
+		defer close(outChunks)
+		defer close(outCount)
+		for chunk := range chunks {
+			current.Bytes += chunk.Size
+			current.Chunks++
+			current.Elapsed = time.Since(started)
+			outChunks <- chunk
+			outCount <- current
+		}
+
+	}()
+	return outChunks, outCount
+}
+
+// ObjectNamer assigns names to objects based on their Size and Number.
+// Use a Printf style string to format the names, and use %[1]d to refer
+// to the Number and %[2]d to refer to the size.
+func ObjectNamer(chunks <-chan FileChunk, nameFormat string) <-chan FileChunk {
+	outChunks := make(chan FileChunk)
+	go func() {
+		defer close(outChunks)
+		for chunk := range chunks {
+			chunk.Object = fmt.Sprintf(nameFormat, chunk.Number, chunk.Size)
+			outChunks <- chunk
+		}
+
+	}()
+	return outChunks
+}
+
+// Containerizer assigns each FileChunk the provided container.
+func Containerizer(chunks <-chan FileChunk, container string) <-chan FileChunk {
+	outChunks := make(chan FileChunk)
+	go func() {
+		defer close(outChunks)
+		for chunk := range chunks {
+			chunk.Container = container
+			outChunks <- chunk
+		}
+
+	}()
+	return outChunks
+}
