@@ -183,6 +183,73 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 	return dataChunks
 }
 
+// Fork copies the input to two output channels, allowing a pipeline to
+// diverge.
+func Fork(chunks <-chan FileChunk) (<-chan FileChunk, <-chan FileChunk) {
+	a := make(chan FileChunk)
+	b := make(chan FileChunk)
+	go func() {
+		defer close(a)
+		defer close(b)
+		for chunk := range chunks {
+			a <- chunk
+			b <- chunk
+		}
+	}()
+	return a, b
+}
+
+// Divide distributes the input channel across divisor new channels, which
+// are returned in a slice. It will return an error if divisor is 0.
+func Divide(chunks <-chan FileChunk, divisor uint) []chan FileChunk {
+	chans := make([]chan FileChunk, divisor)
+	for i, _ := range chans {
+		chans[i] = make(chan FileChunk)
+	}
+	go func() {
+		defer func() {
+			for _, channel := range chans {
+				close(channel)
+			}
+		}()
+		var count uint = 0
+		for chunk := range chunks {
+			chans[count%divisor] <- chunk
+			count++
+		}
+	}()
+	return chans
+}
+
+// Join fans many input channels into one output channel.
+func Join(chans ...<-chan FileChunk) <-chan FileChunk {
+	var wg sync.WaitGroup
+	chunks := make(chan FileChunk)
+	go func() {
+		defer close(chunks)
+		for _, channel := range chans {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for chunk := range channel {
+					chunks <- chunk
+				}
+			}()
+		}
+		wg.Wait()
+	}()
+	return chunks
+}
+
+// Consume reads the channel until it is empty, consigning its
+// contents to the void.
+func Consume(channel <-chan FileChunk) {
+	go func() {
+		for _ = range channel {
+		}
+	}()
+}
+
 // Count represents basic statistics about the data that has passed through
 // a Counter pipeline stage. It records the total Bytes of data that it has
 // seen, as well as the number of chunks and the duration since the
