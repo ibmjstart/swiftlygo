@@ -3,7 +3,7 @@ package slo_test
 import (
 	"fmt"
 	"github.com/mattetti/filebuffer"
-	//	"github.ibm.com/ckwaldon/swiftlygo/auth"
+	"github.ibm.com/ckwaldon/swiftlygo/auth"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -222,11 +222,149 @@ var _ = Describe("Pipeline", func() {
 		})
 	})
 	Describe("UploadData", func() {
+		const (
+			chunkSize uint = 5
+			numChunks uint = 5
+		)
+		var (
+			chunkChan                     chan FileChunk
+			outChan                       <-chan FileChunk
+			errorChan                     chan error
+			i, count, errCount, bufferLen uint
+			dest                          auth.Destination
+			data                          []byte
+		)
+		BeforeEach(func() {
+			count = 0
+			errCount = 0
+			bufferLen = numChunks * chunkSize
+			data = make([]byte, 0)
+			chunkChan = make(chan FileChunk, numChunks)
+			errorChan = make(chan error, numChunks)
+			for i = 0; i < bufferLen; i++ {
+				data = append(data, byte(i))
+			}
+		})
 		Context("When uploading valid chunks", func() {
+			It("Sends back no errors", func() {
+				dest = auth.NewBufferDestination()
+				outChan = UploadData(chunkChan, errorChan, dest)
+				for i = 0; i < numChunks; i++ {
+					chunkChan <- FileChunk{
+						Size:      chunkSize,
+						Object:    "Object",
+						Container: "Container",
+						Hash:      "somehexstring",
+						Number:    i,
+						Offset:    i * chunkSize,
+						Data:      data[i*chunkSize : (i+1)*chunkSize],
+					}
+				}
+				close(chunkChan)
+				for _ = range outChan {
+					count++
+				}
+				Expect(count).To(Equal(numChunks))
+				close(errorChan)
+				for e := range errorChan {
+					Expect(e).To(BeNil())
+					errCount++
+				}
+				Expect(errCount).To(Equal(uint(0)))
+			})
 		})
 		Context("When uploading chunks with missing fields", func() {
+			It("Generates an error for each incomplete struct", func() {
+				var (
+					chunkStart uint = 0
+				)
+				dest = auth.NewBufferDestination()
+				outChan = UploadData(chunkChan, errorChan, dest)
+
+				for _, chunk := range []FileChunk{
+					FileChunk{ //missing Size
+						Object:    "Object",
+						Container: "Container",
+						Hash:      "somehexstring",
+						Number:    chunkStart,
+						Offset:    chunkStart * chunkSize,
+						Data:      data[chunkStart*chunkSize : (chunkStart+1)*chunkSize],
+					},
+					FileChunk{ //missing Object
+						Size:      chunkSize,
+						Container: "Container",
+						Hash:      "somehexstring",
+						Number:    chunkStart,
+						Offset:    chunkStart * chunkSize,
+						Data:      data[chunkStart*chunkSize : (chunkStart+1)*chunkSize],
+					},
+					FileChunk{ //missing Container
+						Size:   chunkSize,
+						Object: "Object",
+						Hash:   "somehexstring",
+						Number: chunkStart,
+						Offset: chunkStart * chunkSize,
+						Data:   data[chunkStart*chunkSize : (chunkStart+1)*chunkSize],
+					},
+					FileChunk{ //missing Hash
+						Size:      chunkSize,
+						Object:    "Object",
+						Container: "Container",
+						Number:    chunkStart,
+						Offset:    chunkStart * chunkSize,
+						Data:      data[chunkStart*chunkSize : (chunkStart+1)*chunkSize],
+					},
+					FileChunk{ //missing Data
+						Size:      chunkSize,
+						Object:    "Object",
+						Container: "Container",
+						Hash:      "somehexstring",
+						Number:    chunkStart,
+						Offset:    chunkStart * chunkSize,
+					},
+				} {
+					chunkChan <- chunk
+				}
+				close(chunkChan)
+				for _ = range outChan {
+					count++
+				}
+				Expect(count).To(Equal(uint(0)))
+				close(errorChan)
+				for e := range errorChan {
+					Expect(e).ToNot(BeNil())
+					errCount++
+				}
+				Expect(errCount).To(Equal(numChunks))
+			})
 		})
 		Context("When uploading to a bad destination", func() {
+			It("Generates an error for each failed upload", func() {
+				dest = auth.NewErrorDestination()
+				outChan = UploadData(chunkChan, errorChan, dest)
+				for i = 0; i < numChunks; i++ {
+					chunkChan <- FileChunk{
+						Size:      chunkSize,
+						Object:    "Object",
+						Container: "Container",
+						Hash:      "somehexstring",
+						Number:    i,
+						Offset:    i * chunkSize,
+						Data:      data[i*chunkSize : (i+1)*chunkSize],
+					}
+				}
+				close(chunkChan)
+				for _ = range outChan {
+					count++
+				}
+				Expect(count).To(Equal(uint(0)))
+				close(errorChan)
+				for e := range errorChan {
+					Expect(e).ToNot(BeNil())
+					errCount++
+				}
+				Expect(errCount).To(Equal(numChunks))
+			})
 		})
 	})
 })

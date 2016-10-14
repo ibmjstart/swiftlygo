@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"io"
 )
 
@@ -103,6 +104,21 @@ func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
 			sum := md5.Sum(chunk.Data)
 			chunk.Hash = hex.EncodeToString(sum[:])
 			dataChunks <- chunk
+		}
+	}()
+	return dataChunks
+}
+
+// UploadData sends FileChunks to object storage via the provided destination. It places
+// the objects in their Container with their Object name and checks the md5 of the upload,
+// retrying on failure. It requires all fields of the FileChunk to be filled out before
+// attempting an upload, and will send errors if it encountes FileChunks with missing
+// fields.
+func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destination) <-chan FileChunk {
+	dataChunks := make(chan FileChunk)
+	go func() {
+		defer close(dataChunks)
+		for _ = range chunks {
 		}
 	}()
 	return dataChunks
