@@ -120,6 +120,8 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 	const maxAttempts = 5
 	var wg sync.WaitGroup
 	dataChunks := make(chan FileChunk)
+	// attempt makes a single pass at uploading the data from a chunk and returns an error
+	// if it fails.
 	attempt := func(chunk FileChunk) error {
 		upload, err := dest.CreateFile(chunk.Container, chunk.Object, true, chunk.Hash)
 		if err != nil {
@@ -138,6 +140,10 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 		}
 		return nil
 	}
+	// retry reattempts uploads on an exponential backoff and aggregates the
+	// errors that occur. If all upload attempts fail, all errors are concatenated
+	// together and sent. If the retryWait parameter of UploadData is set to zero,
+	// there is no wait between retries (this is useful for testing).
 	retry := func(chunk FileChunk, initialErr error) {
 		defer wg.Done()
 		var sleep uint = 1
