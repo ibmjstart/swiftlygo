@@ -108,7 +108,7 @@ func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileCh
 	manifestOut := make(chan FileChunk)
 	go func() {
 		defer close(manifestOut)
-		masterManifest := make([]FileChunk, 1000)
+		masterManifest := make([]FileChunk, 0)
 		for chunk := range chunks {
 			//chunk numbers are zero based, but lengths are 1-based
 			for chunk.Number+1 > uint(len(masterManifest)) {
@@ -141,6 +141,23 @@ func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileCh
 				Data:   json,
 				Size:   uint(len(json)),
 			}
+		}
+	}()
+	return manifestOut
+}
+
+// UploadManifests treats the incoming FileChunks as manifests and uploads them with the special
+// SLO manifest headers.
+func UploadManifests(manifests <-chan FileChunk, errors chan<- error, dest auth.Destination) <-chan FileChunk {
+	manifestOut := make(chan FileChunk)
+	go func() {
+		defer close(manifestOut)
+		for manifest := range manifests {
+			err := dest.CreateSLO(manifest.Container, manifest.Object, manifest.Hash, manifest.Data)
+			if err != nil {
+				errors <- fmt.Errorf("Problem uploading manifest file: %s", err)
+			}
+			manifestOut <- manifest
 		}
 	}()
 	return manifestOut
