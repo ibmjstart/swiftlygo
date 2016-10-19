@@ -109,17 +109,18 @@ func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileCh
 		defer close(manifestOut)
 		masterManifest := make([]FileChunk, 1000)
 		for chunk := range chunks {
-			for chunk.Number >= uint(len(masterManifest)) {
-				temp := make([]FileChunk, len(masterManifest)+1000)
-				copy(masterManifest, temp)
+			//chunk numbers are zero based, but lengths are 1-based
+			for chunk.Number+1 > uint(len(masterManifest)) {
+				temp := make([]FileChunk, chunk.Number+1)
+				copy(temp, masterManifest)
 				masterManifest = temp
 			}
 			masterManifest[chunk.Number] = chunk
 		}
-		for i := 0; i < len(masterManifest)/1000; i++ {
+		for i := 0; i*1000 < len(masterManifest); i++ {
 			var data []FileChunk
-			if (i+1)*1000 > len(masterManifest) {
-				data = masterManifest[i*1000 : len(masterManifest)-i*1000]
+			if (i+1)*1000 >= len(masterManifest) {
+				data = masterManifest[i*1000 : len(masterManifest)]
 			} else {
 				data = masterManifest[i*1000 : (i+1)*1000]
 			}
