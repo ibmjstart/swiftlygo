@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"io"
+	"strings"
 	"sync"
 	"time"
 )
@@ -385,6 +386,9 @@ func ObjectNamer(chunks <-chan FileChunk, nameFormat string) <-chan FileChunk {
 		defer close(outChunks)
 		for chunk := range chunks {
 			chunk.Object = fmt.Sprintf(nameFormat, chunk.Number, chunk.Size)
+			if strings.Contains(chunk.Object, "%!(EXTRA") {
+				chunk.Object = strings.Split(chunk.Object, "%!(EXTRA")[0]
+			}
 			outChunks <- chunk
 		}
 
