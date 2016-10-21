@@ -19,7 +19,8 @@ import (
 // Container is the object storage Container that this chunk will be uploaded into
 // Hash is the md5 sum of this FileChunk
 // Data is a slice of the original file of length Size
-// Size is the length of the Data slice
+// Size is the length of the Data slice if the FileChunk represents a normal file chunk
+// 	or it could be the apparent size of the manifest, if it represents a manifest file
 // Offset is the index of the first byte in the file that is included in Data
 type FileChunk struct {
 	Number    uint
@@ -119,15 +120,19 @@ func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileCh
 			masterManifest[chunk.Number] = chunk
 		}
 		for i := 0; i*1000 < len(masterManifest); i++ {
-			var data []FileChunk
+			var (
+				data         []FileChunk
+				apparentSize uint   = 0
+				etags        string = ""
+			)
 			if (i+1)*1000 >= len(masterManifest) {
 				data = masterManifest[i*1000 : len(masterManifest)]
 			} else {
 				data = masterManifest[i*1000 : (i+1)*1000]
 			}
-			etags := ""
 			for _, chunk := range data {
 				etags += chunk.Hash
+				apparentSize += chunk.Size
 			}
 			sum := md5.Sum([]byte(etags))
 			json, err := json.Marshal(data)
@@ -139,7 +144,7 @@ func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileCh
 				Hash:   hex.EncodeToString(sum[:]),
 				Number: uint(i),
 				Data:   json,
-				Size:   uint(len(json)),
+				Size:   apparentSize,
 			}
 		}
 	}()
