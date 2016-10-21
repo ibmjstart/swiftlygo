@@ -222,6 +222,23 @@ func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
 	return dataChunks
 }
 
+// Json converts the incoming FileChunks into JSON, sending any conversion errors
+// back on its errors channel.
+func Json(chunks <-chan FileChunk, errors chan<- error) <-chan []byte {
+	jsonOut := make(chan []byte)
+	go func() {
+		defer close(jsonOut)
+		for chunk := range chunks {
+			data, err := json.Marshal(chunk)
+			if err != nil {
+				errors <- fmt.Errorf("Problem converting chunk %v to JSON: %s", chunk, err)
+			}
+			jsonOut <- data
+		}
+	}()
+	return jsonOut
+}
+
 // UploadData sends FileChunks to object storage via the provided destination. It places
 // the objects in their Container with their Object name and checks the md5 of the upload,
 // retrying on failure. It requires all fields of the FileChunk to be filled out before
