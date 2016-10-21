@@ -340,12 +340,12 @@ func Join(chans ...<-chan FileChunk) <-chan FileChunk {
 		defer close(chunks)
 		for _, channel := range chans {
 			wg.Add(1)
-			go func() {
+			go func(c <-chan FileChunk) {
 				defer wg.Done()
-				for chunk := range channel {
+				for chunk := range c {
 					chunks <- chunk
 				}
-			}()
+			}(channel)
 		}
 		wg.Wait()
 	}()
