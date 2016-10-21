@@ -311,6 +311,28 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 	return dataChunks
 }
 
+// Separate divides the input channel into two output channels based on some condition.
+// If the condition is true, the current chunk goes to the first output channel, otherwise
+// it goes to the second.
+func Separate(chunks <-chan FileChunk, errors chan<- error, condition func(FileChunk) (bool, error)) (<-chan FileChunk, <-chan FileChunk) {
+	a := make(chan FileChunk)
+	b := make(chan FileChunk)
+	go func() {
+		defer close(a)
+		defer close(b)
+		for chunk := range chunks {
+			if ok, err := condition(chunk); err != nil {
+				errors <- err
+			} else if ok {
+				a <- chunk
+			} else {
+				b <- chunk
+			}
+		}
+	}()
+	return a, b
+}
+
 // Fork copies the input to two output channels, allowing a pipeline to
 // diverge.
 func Fork(chunks <-chan FileChunk) (<-chan FileChunk, <-chan FileChunk) {
