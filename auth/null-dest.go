@@ -32,7 +32,7 @@ func (s NullDestination) CreateSLO(containerName, manifestName, manifestEtag str
 }
 
 // CreateDLO always returns nil.
-func (s NullDestination) CreateDLO(containerName, manifestName, filenamePrefix string) error {
+func (s NullDestination) CreateDLO(containerName, manifestName, objectContainer, filenamePrefix string) error {
 	return nil
 }
 
