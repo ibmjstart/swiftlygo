@@ -3,12 +3,12 @@ package slo_test
 import (
 	"fmt"
 	"github.com/mattetti/filebuffer"
-	"github.ibm.com/ckwaldon/swiftlygo/auth"
+	"github.com/ibmjstart/swiftlygo/auth"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.ibm.com/ckwaldon/swiftlygo/slo"
+	. "github.com/ibmjstart/swiftlygo/slo"
 )
 
 type nullReaderAt struct{}
