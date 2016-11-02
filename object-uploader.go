@@ -4,7 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.ibm.com/ckwaldon/swiftlygo/auth"
+	"github.com/ibmjstart/swiftlygo/auth"
 	"os"
 )
 

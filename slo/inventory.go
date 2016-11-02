@@ -2,7 +2,7 @@ package slo
 
 import (
 	"fmt"
-	"github.ibm.com/ckwaldon/swiftlygo/auth"
+	"github.com/ibmjstart/swiftlygo/auth"
 )
 
 type inventory struct {

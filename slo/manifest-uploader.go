@@ -3,7 +3,7 @@ package slo
 import (
 	"encoding/json"
 	"fmt"
-	"github.ibm.com/ckwaldon/swiftlygo/auth"
+	"github.com/ibmjstart/swiftlygo/auth"
 )
 
 // manifestUploader handles sending manifest data to Object storage

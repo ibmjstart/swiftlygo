@@ -1,8 +1,8 @@
 package slo_test
 
 import (
-	"github.ibm.com/ckwaldon/swiftlygo/auth"
-	. "github.ibm.com/ckwaldon/swiftlygo/slo"
+	"github.com/ibmjstart/swiftlygo/auth"
+	. "github.com/ibmjstart/swiftlygo/slo"
 
 	"bytes"
 	"fmt"

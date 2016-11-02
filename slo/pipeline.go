@@ -34,7 +34,12 @@ type FileChunk struct {
 
 // MarshalJSON defines the tranformation from a FileChunk to an SLO manifest entry
 func (f FileChunk) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("{\"path\":\"%s\",\"etag\":\"%s\",\"size_bytes\":%d}", f.Container+"/"+f.Object, f.Hash, f.Size)), nil
+	return []byte(fmt.Sprintf("{\"path\":\"%s\",\"etag\":\"%s\",\"size_bytes\":%d}", f.Path(), f.Hash, f.Size)), nil
+}
+
+// Path returns the path that this FileChunks will be uploaded to in object storage.
+func (f FileChunk) Path() string {
+	return f.Container + "/" + f.Object
 }
 
 // BuildChunks sends back a channel of FileChunk structs, each with Size of chunkSize
