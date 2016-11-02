@@ -5,8 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/mxk/go-flowrate/flowrate"
-	"github.com/ibmjstart/swiftlygo/auth"
+	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"io"
 	"strings"
 	"sync"
@@ -261,8 +260,6 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 		if err != nil {
 			return fmt.Errorf("Err creating upload for chunk %v: %s", chunk, err)
 		}
-		upload = flowrate.NewWriter(upload, 2500)
-		_ = upload.(*flowrate.Writer).SetBlocking(true)
 		written, err := upload.Write(chunk.Data)
 		if err != nil {
 			return fmt.Errorf("Err uploading data for chunk %v: %s", chunk, err)
