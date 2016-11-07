@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ibmjstart/swiftlygo/auth"
+	"github.ibm.com/ckwaldon/swiftlygo/auth"
 	"io"
 	"strings"
 	"sync"
@@ -42,16 +42,23 @@ func (f FileChunk) Path() string {
 	return f.Container + "/" + f.Object
 }
 
-// BuildChunks sends back a channel of FileChunk structs, each with Size of chunkSize
-// or less and each with its Number set sequentially from 0 upward. The Size will
-// be less than chunkSize when the final chunk doesn't need to be chunkSize to
-// contain the remainder of the data. Both dataSize and chunkSize need to be
-// greater than zero, and chunkSize must not be larger than dataSize
-func BuildChunks(dataSize, chunkSize uint) <-chan FileChunk {
+// BuildChunks sends back a channel of FileChunk structs
+// each with Size of chunkSize or less and each with its
+// Number field set sequentially from 0 upward. It also returns
+// the number of chunks that it will yield on the channel. The Size
+// of each chunk will be less than chunkSize when the final chunk
+// doesn't need to be chunkSize to contain the remainder of the data.
+// Both dataSize and chunkSize need to be greater than zero, and
+// chunkSize must not be larger than dataSize
+func BuildChunks(dataSize, chunkSize uint) (<-chan FileChunk, uint) {
 	chunks := make(chan FileChunk)
 	if dataSize < 1 || chunkSize < 1 || chunkSize > dataSize {
 		close(chunks)
-		return chunks
+		return chunks, 0
+	}
+	numChunks := dataSize / chunkSize
+	if dataSize%chunkSize != 0 {
+		numChunks++
 	}
 	go func() {
 		defer close(chunks)
@@ -65,7 +72,7 @@ func BuildChunks(dataSize, chunkSize uint) <-chan FileChunk {
 			currentChunkNumber++
 		}
 	}()
-	return chunks
+	return chunks, numChunks
 }
 
 func min(a, b uint) uint {
