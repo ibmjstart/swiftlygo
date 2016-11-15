@@ -2,13 +2,13 @@ package slo_test
 
 import (
 	"fmt"
-	"github.com/mattetti/filebuffer"
 	"github.com/ibmjstart/swiftlygo/auth"
+	"github.com/mattetti/filebuffer"
 	"time"
 
+	. "github.com/ibmjstart/swiftlygo/slo"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/ibmjstart/swiftlygo/slo"
 )
 
 type nullReaderAt struct{}
@@ -31,7 +31,7 @@ var _ = Describe("Pipeline", func() {
 					{DataSize: 1, ChunkSize: 0},
 					{DataSize: 10, ChunkSize: 11},
 				} {
-					outChan = BuildChunks(params.DataSize, params.ChunkSize)
+					outChan, _ = BuildChunks(params.DataSize, params.ChunkSize)
 					count = 0
 					for _ = range outChan {
 						count++
@@ -45,7 +45,7 @@ var _ = Describe("Pipeline", func() {
 				var sum uint = 0
 				dataSize = 100
 				chunkSize = dataSize / 10
-				outChan = BuildChunks(dataSize, chunkSize)
+				outChan, _ = BuildChunks(dataSize, chunkSize)
 				for chunk := range outChan {
 					sum += chunk.Size
 					Expect(chunk.Size).To(Equal(chunkSize))
@@ -58,7 +58,7 @@ var _ = Describe("Pipeline", func() {
 				var sum uint = 0
 				dataSize = 99
 				chunkSize = dataSize / 10
-				outChan = BuildChunks(dataSize, chunkSize)
+				outChan, _ = BuildChunks(dataSize, chunkSize)
 				for chunk := range outChan {
 					sum += chunk.Size
 					Expect(chunk.Size).To(BeNumerically("<=", chunkSize))
