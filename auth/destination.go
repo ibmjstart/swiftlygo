@@ -102,7 +102,7 @@ func getAuthVersion(url string) (int, error) {
 	return authVersionNumber, nil
 }
 
-// authenticate logs in to OpenStack object storage and returns a connection to the
+// Authenticate logs in to OpenStack object storage and returns a connection to the
 // object store. The url MUST have its auth version at the end: https://example.com/v{1,2,3}
 func Authenticate(username, apiKey, authURL, domain, tenant string) (Destination, error) {
 	version, err := getAuthVersion(authURL)
