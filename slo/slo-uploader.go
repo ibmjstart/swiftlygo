@@ -23,6 +23,7 @@ type Uploader struct {
 	source         io.ReaderAt
 	connection     auth.Destination
 	pipelineSource <-chan FileChunk
+	pipelineOut    <-chan FileChunk
 	pipeline       chan FileChunk
 	uploadCounts   <-chan Count
 	errors         chan error
@@ -153,18 +154,13 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	topManifests = Map(topManifests, errors, printManifest)
 	topManifests = UploadManifests(topManifests, errors, connection)
 
-	// close the errors channel after topManifests is empty
-	go func() {
-		defer close(errors)
-		for _ = range topManifests {
-		}
-	}()
 	return &Uploader{
 		outputChannel:  outputChannel,
 		Status:         status,
 		connection:     connection,
 		source:         source,
 		pipeline:       intoPipeline,
+		pipelineOut:	topManifests,
 		pipelineSource: fromSource,
 		uploadCounts:   uploadCounts,
 		errors:         errors,
@@ -182,11 +178,20 @@ func (u *Uploader) Upload() error {
 			u.Status.uploadComplete()
 		}
 	}()
+	// close the errors channel after topManifests is empty
+	go func() {
+		defer close(u.errors)
+		for _ = range u.pipelineOut {
+			fmt.Print()
+		}
+		fmt.Print()
+	}()
 
 	// start sending chunks through the pipeline.
 	for chunk := range u.pipelineSource {
 		u.pipeline <- chunk
 	}
+	close(u.pipeline)
 	// Drain the errors channel, this will block until the errors channel is closed above.
 	for e := range u.errors {
 		u.outputChannel <- e.Error()
