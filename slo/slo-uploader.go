@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/ibmjstart/swiftlygo/auth"
 	"io"
-	"math"
 	"os"
 	"time"
 )
@@ -19,13 +18,16 @@ const maxChunkSize uint = 1000 * 1000 * 1000 * 5
 
 // Uploader uploads a file to object storage
 type Uploader struct {
-	outputChannel chan string
-	Status        *Status
-	manifest      *manifest
-	source        *source
-	connection    auth.Destination
-	inventory     *inventory
-	maxUploaders  uint
+	outputChannel  chan string
+	Status         *Status
+	source         io.ReaderAt
+	connection     auth.Destination
+	pipelineSource <-chan FileChunk
+	pipelineOut    <-chan FileChunk
+	pipeline       chan FileChunk
+	uploadCounts   <-chan Count
+	errors         chan error
+	maxUploaders   uint
 }
 
 func getSize(file *os.File) (uint, error) {
@@ -36,34 +38,12 @@ func getSize(file *os.File) (uint, error) {
 	return uint(dataStats.Size()), nil
 }
 
-func computeNumChunks(dataSize, chunkSize uint) uint {
-	return uint(math.Ceil(float64(dataSize) / float64(chunkSize)))
-}
-
-func getNumberChunks(file *os.File, chunkSize uint) (numChunks uint, e error) {
-	dataSize, err := getSize(file)
-	if err != nil {
-		return 0, err
-	}
-	numChunks = computeNumChunks(dataSize, chunkSize)
-	if numChunks > maxFileChunks || chunkSize > maxChunkSize {
-		minimumChunkSize := uint(math.Ceil(float64(dataSize) / float64(maxFileChunks)))
-		return 0, fmt.Errorf("SLO manifests can only have a maxiumum of %d file chunks with a maximum size of %d bytes.\nPlease try again with a chunk size >= %d and <= %d",
-			maxFileChunks,
-			maxChunkSize,
-			minimumChunkSize,
-			maxChunkSize)
-	} else if chunkSize > uint(dataSize) {
-		return 0, fmt.Errorf("Chunk size %d bytes is greater than file size (%d bytes)",
-			chunkSize,
-			dataSize)
-	}
-	return numChunks, nil
-}
-
 func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*Uploader, error) {
-
+	var (
+		serversideChunks []string
+		err              error
+	)
 	if source == nil {
 		return nil, fmt.Errorf("Unable to upload nil file")
 	}
@@ -72,31 +52,52 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 		return nil, fmt.Errorf("Unable to upload with %d uploaders (minimum 1 required)", maxUploads)
 	}
 	outputChannel := make(chan string, 10)
+
+	if container == "" {
+		return nil, fmt.Errorf("Container name cannot be the emtpy string")
+	} else if object == "" {
+		return nil, fmt.Errorf("Object name cannot be the emtpy string")
+	}
+
+	if chunkSize > maxChunkSize || chunkSize < 1 {
+		return nil, fmt.Errorf("Chunk size must be between 1byte and 5GB")
+	}
+
+	// Define a function that prints manifest names when the pass through
+	printManifest := func(chunk FileChunk) (FileChunk, error) {
+		outputChannel <- fmt.Sprintf("Uploading manifest: %s\n", chunk.Path())
+		return chunk, nil
+	}
+
+	// set up the list of missing chunks
+	if onlyMissing {
+		serversideChunks, err = connection.FileNames(container)
+		if err != nil {
+			outputChannel <- fmt.Sprintf("Problem getting existing chunks names from object storage: %s\n", err)
+		}
+	} else {
+		serversideChunks = make([]string, 0)
+	}
+
 	// Asynchronously print everything that comes in on this channel
 	go func(output io.Writer, incoming chan string) {
 		for message := range incoming {
 			_, err := fmt.Fprintln(output, message)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error writing to output log: %s", err)
+				fmt.Fprintf(os.Stderr, "Error writing to output log: %s\n", err)
 			}
 		}
 	}(outputFile, outputChannel)
 
-	numChunks, err := getNumberChunks(source, chunkSize)
+	fileSize, err := getSize(source)
 	if err != nil {
 		return nil, err
 	}
-	sloManifest, err := newManifest(object, container, numChunks, chunkSize)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create SLO Manifest: %s", err)
-	}
-	sourceReader, err := newSource(source, chunkSize, numChunks)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to create source reader:  %s", err)
-	}
-	outputChannel <- fmt.Sprintf("file will be split into %d chunks of size %d bytes", numChunks, chunkSize)
-	status := newStatus(numChunks, chunkSize, outputChannel)
+	// construct pipeline data source
+	fromSource, numberChunks := BuildChunks(uint(fileSize), chunkSize)
 
+	// start status
+	status := newStatus(numberChunks, chunkSize, outputChannel)
 	// Asynchronously print status every 5 seconds
 	go func(status *Status, intervalSeconds uint) {
 		for {
@@ -105,141 +106,95 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 		}
 	}(status, 60)
 
+	// Initialize pipeline, but don't pass in data
+	intoPipeline := make(chan FileChunk)
+	errors := make(chan error, 100)
+	chunks := ObjectNamer(intoPipeline, object+"-chunk-%04[1]d-size-%[2]d")
+	chunks = Containerizer(chunks, container)
+	// Read data for chunks
+	chunks = ReadData(chunks, errors, source)
+	// Perform the hash
+	chunks = HashData(chunks, errors)
+	// Perform upload
+	// Separate out chunks that should not be uploaded
+	noupload, chunks := Separate(chunks, errors, func(chunk FileChunk) (bool, error) {
+		for _, chunkName := range serversideChunks {
+			if chunkName == chunk.Object {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+	uploadStreams := Divide(chunks, maxUploads)
+	doneStreams := make([]<-chan FileChunk, maxUploads)
+	for index, stream := range uploadStreams {
+		doneStreams[index] = UploadData(stream, errors, connection, time.Second)
+	}
+	chunks = Join(doneStreams...)
+	// Join stream of chunks back together
+	chunks = Join(noupload, chunks)
+	chunks = Map(chunks, errors, func(chunk FileChunk) (FileChunk, error) {
+		chunk.Data = nil // Discard data to allow it to be garbage-collected
+		return chunk, nil
+	})
+	chunks, uploadCounts := Counter(chunks)
+
+	// Build manifest layer 1
+	manifests := ManifestBuilder(chunks, errors)
+	manifests = ObjectNamer(manifests, object+"-manifest-%04[1]d")
+	manifests = Containerizer(manifests, container)
+	// Upload manifest layer 1
+	manifests = Map(manifests, errors, printManifest)
+	manifests = UploadManifests(manifests, errors, connection)
+	// Build top-level manifest out of layer 1
+	topManifests := ManifestBuilder(manifests, errors)
+	topManifests = ObjectNamer(topManifests, object)
+	topManifests = Containerizer(topManifests, container)
+	// Upload top-level manifest
+	topManifests = Map(topManifests, errors, printManifest)
+	topManifests = UploadManifests(topManifests, errors, connection)
+
 	return &Uploader{
-		outputChannel: outputChannel,
-		Status:        status,
-		manifest:      sloManifest,
-		connection:    connection,
-		source:        sourceReader,
-		inventory:     newInventory(sloManifest, connection, !onlyMissing, outputChannel),
-		maxUploaders:  maxUploads,
+		outputChannel:  outputChannel,
+		Status:         status,
+		connection:     connection,
+		source:         source,
+		pipeline:       intoPipeline,
+		pipelineOut:	topManifests,
+		pipelineSource: fromSource,
+		uploadCounts:   uploadCounts,
+		errors:         errors,
+		maxUploaders:   maxUploads,
 	}, nil
 }
 
-// UploadFromPrevious uploads the sloUploader's source file to object storage
-// but starts using the provided JSON as the basis for building the manifest.
-func (u *Uploader) UploadFromPrevious(jsonData []byte, excludedChunks ...uint) error {
-	// start hashing chunks
-	chunkPreparedChannel := u.manifest.BuildFromExisting(jsonData, u.source, u.outputChannel)
-	err := u.prepareUpload(excludedChunks...)
-	if err != nil {
-		return fmt.Errorf("Error while preparing upload: %s", err)
-	}
-
-	return u.performUpload(chunkPreparedChannel)
-}
-
 // Upload uploads the sloUploader's source file to object storage
-func (u *Uploader) Upload(excludedChunks ...uint) error {
-	// start hashing chunks
-	chunkPreparedChannel := u.manifest.Build(u.source, u.outputChannel)
-
-	err := u.prepareUpload(excludedChunks...)
-	if err != nil {
-		return fmt.Errorf("Error while preparing upload: %s", err)
-	}
-	return u.performUpload(chunkPreparedChannel)
-}
-
-// prepareUpload readies the chunk inventory for upload.
-func (u *Uploader) prepareUpload(excludedChunks ...uint) error {
-	// prepare inventory
-	err := u.inventory.TakeInventory()
-	if err != nil {
-		return fmt.Errorf("Error taking inventory: %s", err)
-	}
-	u.inventory.Exclude(excludedChunks...)
-	return nil
-}
-
-// performUpload carries out the work of creating the manifest and uploading it.
-func (u *Uploader) performUpload(chunkPreparedChannel chan uint) error {
-	u.Status.setNumberUploads(u.inventory.UploadsNeeded())
+func (u *Uploader) Upload() error {
 	u.Status.start()
-	chunkCompleteChannel := make(chan int, u.maxUploaders)
-	var currrentNumberUploaders uint = 0
-	for readyChunkNumber := range chunkPreparedChannel {
-		if currrentNumberUploaders >= u.maxUploaders {
-			// Wait for one to finish before starting a new one
-			<-chunkCompleteChannel
+	// drain the upload counts
+	go func() {
+		defer u.Status.stop()
+		for _ = range u.uploadCounts {
 			u.Status.uploadComplete()
-			currrentNumberUploaders -= 1
 		}
-		// Begin new upload
-		if u.inventory.ShouldUpload(readyChunkNumber) {
-			go u.uploadDataForChunk(readyChunkNumber, chunkCompleteChannel)
-			u.outputChannel <- fmt.Sprintf("Starting upload for chunk %d", readyChunkNumber)
-			currrentNumberUploaders += 1
+	}()
+	// close the errors channel after topManifests is empty
+	go func() {
+		defer close(u.errors)
+		for _ = range u.pipelineOut {
+			fmt.Print()
 		}
+		fmt.Print()
+	}()
+
+	// start sending chunks through the pipeline.
+	for chunk := range u.pipelineSource {
+		u.pipeline <- chunk
 	}
-	for currrentNumberUploaders > 0 {
-		<-chunkCompleteChannel
-		u.Status.uploadComplete()
-		currrentNumberUploaders -= 1
-	}
-	u.Status.stop()
-	u.Status.print()
-	err := u.manifest.Uploader(u.connection, u.outputChannel).Upload()
-	if err != nil {
-		return fmt.Errorf("Error Uploading Manifest: %s", err)
+	close(u.pipeline)
+	// Drain the errors channel, this will block until the errors channel is closed above.
+	for e := range u.errors {
+		u.outputChannel <- e.Error()
 	}
 	return nil
-}
-
-// uploadDataForChunk attempts to upload the data for a fixed number of retries and either
-// succeeds or prints failures to Stderr.
-func (u *Uploader) uploadDataForChunk(chunkNumber uint, chunkCompleteChannel chan int) {
-	err := u.attemptDataUpload(chunkNumber)
-	errCount, maxErrors := 0, 5
-	for err != nil && errCount < maxErrors {
-		u.outputChannel <- fmt.Sprintf("Failed to upload chunk %d (error: %s), retrying...", chunkNumber, err)
-		errCount += 1
-		time.Sleep(time.Duration(1<<uint(errCount)) * time.Second) // wait 2^errCount seconds
-		err = u.attemptDataUpload(chunkNumber)
-	}
-
-	if errCount >= maxErrors {
-		u.outputChannel <- fmt.Sprintf(
-			"Failed to upload chunk %d, max retries exceeded. Upload again with the --only-missing flag.",
-			chunkNumber)
-	}
-	chunkCompleteChannel <- 0 // Signal chunk done uploading
-}
-
-// attemptDataUpload makes a single attempt to upload a given file chunk and returns an error
-// if it was unsuccessful.
-func (u *Uploader) attemptDataUpload(chunkNumber uint) error {
-	sloChunk := u.manifest.Get(chunkNumber)
-	chunkName := sloChunk.Name()
-
-	chunkReader := u.source.ChunkReader(chunkNumber)
-	fileCreator, err := u.connection.CreateFile(sloChunk.Container(), sloChunk.Name(), true, sloChunk.Hash())
-	if err != nil {
-		return fmt.Errorf("Failed to create upload for chunk %s: %s", chunkName, err)
-	}
-	for chunkReader.HasUnreadData() {
-		data, err := chunkReader.Read()
-		if err != nil {
-			return fmt.Errorf("Failed to read data for chunk %s: %s", chunkName, err)
-		}
-		_, err = fileCreator.Write(data)
-		if err != nil {
-			return fmt.Errorf("Failed to write data for chunk %s: %s", chunkName, err)
-		}
-	}
-	err = fileCreator.Close()
-	if err != nil {
-		return fmt.Errorf("Failed to close upload for chunk %s: %s", chunkName, err)
-	}
-	return nil
-}
-
-// ManifestJSON returns the current contents of the manifest, whether it is
-// complete or not
-func (u *Uploader) ManifestJSON() (string, error) {
-	json, err := u.manifest.JSON()
-	if err != nil {
-		return json, fmt.Errorf("Failed to get JSON manifest: %s", err)
-	}
-	return json, nil
 }
