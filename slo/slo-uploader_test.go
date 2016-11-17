@@ -131,7 +131,7 @@ var _ = Describe("Uploader", func() {
 		})
 		Context("Uploading only missing file chunks", func() {
 			It("Should only attempt to upload the missing pieces", func() {
-				chunkName := "object-part-0000-chunk-size-10"
+				chunkName := "object-chunk-0000-size-10"
 				destination.Containers["container"] = append(destination.Containers["container"], chunkName)
 				chunkSize := 10
 				uploader, err := NewUploader(destination, uint(chunkSize), "container", "object", tempfile, 1, true, ioutil.Discard)
