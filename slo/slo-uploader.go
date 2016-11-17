@@ -109,8 +109,8 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	// Initialize pipeline, but don't pass in data
 	intoPipeline := make(chan FileChunk)
 	errors := make(chan error, 100)
-	chunks := ObjectNamer(intoPipeline, object+"-chunk-%04[1]d-size-%[2]d")
-	chunks = Containerizer(chunks, container)
+	chunks := ObjectNamer(intoPipeline, errors, object+"-chunk-%04[1]d-size-%[2]d")
+	chunks = Containerizer(chunks, errors, container)
 	// Read data for chunks
 	chunks = ReadData(chunks, errors, source)
 	// Perform the hash
@@ -141,15 +141,15 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 
 	// Build manifest layer 1
 	manifests := ManifestBuilder(chunks, errors)
-	manifests = ObjectNamer(manifests, object+"-manifest-%04[1]d")
-	manifests = Containerizer(manifests, container)
+	manifests = ObjectNamer(manifests, errors, object+"-manifest-%04[1]d")
+	manifests = Containerizer(manifests, errors, container)
 	// Upload manifest layer 1
 	manifests = Map(manifests, errors, printManifest)
 	manifests = UploadManifests(manifests, errors, connection)
 	// Build top-level manifest out of layer 1
 	topManifests := ManifestBuilder(manifests, errors)
-	topManifests = ObjectNamer(topManifests, object)
-	topManifests = Containerizer(topManifests, container)
+	topManifests = ObjectNamer(topManifests, errors, object)
+	topManifests = Containerizer(topManifests, errors, container)
 	// Upload top-level manifest
 	topManifests = Map(topManifests, errors, printManifest)
 	topManifests = UploadManifests(topManifests, errors, connection)
@@ -160,7 +160,7 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 		connection:     connection,
 		source:         source,
 		pipeline:       intoPipeline,
-		pipelineOut:	topManifests,
+		pipelineOut:    topManifests,
 		pipelineSource: fromSource,
 		uploadCounts:   uploadCounts,
 		errors:         errors,
