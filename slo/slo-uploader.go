@@ -170,6 +170,7 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 
 // Upload uploads the sloUploader's source file to object storage
 func (u *Uploader) Upload() error {
+	var errCount uint = 0
 	u.Status.start()
 	// drain the upload counts
 	go func() {
@@ -194,7 +195,11 @@ func (u *Uploader) Upload() error {
 	close(u.pipeline)
 	// Drain the errors channel, this will block until the errors channel is closed above.
 	for e := range u.errors {
+		errCount++
 		u.outputChannel <- e.Error()
 	}
-	return nil
+	if errCount == 0 {
+		return nil
+	}
+	return fmt.Errorf("Encountered %d errors, check log output.", errCount)
 }
