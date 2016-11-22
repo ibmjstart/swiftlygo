@@ -8,7 +8,6 @@ import (
 	"github.com/ibmjstart/swiftlygo/auth"
 	"io"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -115,25 +114,24 @@ func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
 // fields. The retry wait is the base wait before a retry is attempted.
 func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destination, retryWait time.Duration) <-chan FileChunk {
 	const maxAttempts = 5
-	var wg sync.WaitGroup
 	dataChunks := make(chan FileChunk)
 	// attempt makes a single pass at uploading the data from a chunk and returns an error
 	// if it fails.
-	attempt := func(chunk FileChunk) error {
+	attempt := func(chunk *FileChunk) error {
 		upload, err := dest.CreateFile(chunk.Container, chunk.Object, true, chunk.Hash)
 		if err != nil {
-			return fmt.Errorf("Err creating upload for chunk %v: %s", chunk, err)
+			return fmt.Errorf("Err creating upload for chunk %d: %s", chunk.Number, err)
 		}
 		written, err := upload.Write(chunk.Data)
 		if err != nil {
-			return fmt.Errorf("Err uploading data for chunk %v: %s", chunk, err)
+			return fmt.Errorf("Err uploading data for chunk %d: %s", chunk.Number, err)
 		}
 		if uint(written) != chunk.Size {
-			return fmt.Errorf("Problem uploading chunk %v, uploaded %d bytes but chunk is %d bytes long", chunk, written, chunk.Size)
+			return fmt.Errorf("Problem uploading chunk %d, uploaded %d bytes but chunk is %d bytes long", chunk.Number, written, chunk.Size)
 		}
 		err = upload.Close()
 		if err != nil {
-			return fmt.Errorf("Err closing upload for chunk %v: %s", chunk, err)
+			return fmt.Errorf("Err closing upload for chunk %d: %s", chunk.Number, err)
 		}
 		return nil
 	}
@@ -141,23 +139,22 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 	// errors that occur. If all upload attempts fail, all errors are concatenated
 	// together and sent. If the retryWait parameter of UploadData is set to zero,
 	// there is no wait between retries (this is useful for testing).
-	retry := func(chunk FileChunk, initialErr error) {
-		defer wg.Done()
+	retry := func(chunk *FileChunk) {
+		defer func() {
+			chunk.Data = nil // Garbage-collect the data
+		}()
 		var sleep uint = 1
-		outerr := fmt.Errorf("\n%v", initialErr)
-		for err := fmt.Errorf(""); err != nil; sleep++ { // retry
+		for err := attempt(chunk); err != nil; sleep++ { // retry
 			time.Sleep(retryWait * (1 << sleep))
 			err = attempt(chunk)
 			if err != nil {
-				outerr = fmt.Errorf("%v,\n%v", outerr, err)
+				errors <- err
 				if sleep >= maxAttempts {
-					errors <- fmt.Errorf("Final upload attempt for chunk %v failed with errors: %v", chunk, outerr)
+					errors <- fmt.Errorf("Final upload attempt for chunk %d failed after %d retries ", chunk.Number, sleep)
 					return
 				}
 			}
 		}
-		chunk.Data = nil // Garbage-collect the data
-		dataChunks <- chunk
 	}
 	go func() {
 		defer close(dataChunks)
@@ -165,21 +162,12 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 			if chunk.Size < 1 || uint(len(chunk.Data)) != chunk.Size ||
 				chunk.Object == "" || chunk.Container == "" || chunk.Hash == "" {
 
-				errors <- fmt.Errorf("Chunk %v is missing required data", chunk)
+				errors <- fmt.Errorf("Chunk %d is missing required data", chunk.Number)
 				continue
 			}
-			err := attempt(chunk)
-			if err != nil {
-				go retry(chunk, err)
-				// The waitgroup add must happen before the call to Wait(), so it
-				// can't be called within the retry() function
-				wg.Add(1)
-				continue
-			}
-			chunk.Data = nil // Garbage-collect the data
+			retry(&chunk)
 			dataChunks <- chunk
 		}
-		wg.Wait()
 	}()
 	return dataChunks
 }
