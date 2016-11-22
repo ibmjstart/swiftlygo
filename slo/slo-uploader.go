@@ -108,7 +108,7 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 
 	// Initialize pipeline, but don't pass in data
 	intoPipeline := make(chan FileChunk)
-	errors := make(chan error, 100)
+	errors := make(chan error)
 	chunks := ObjectNamer(intoPipeline, errors, object+"-chunk-%04[1]d-size-%[2]d")
 	chunks = Containerizer(chunks, errors, container)
 	// Read data for chunks
