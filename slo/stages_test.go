@@ -241,7 +241,7 @@ var _ = Describe("Pipeline", func() {
 			bufferLen = numChunks * chunkSize
 			data = make([]byte, 0)
 			chunkChan = make(chan FileChunk, numChunks)
-			errorChan = make(chan error, numChunks)
+			errorChan = make(chan error, numChunks*6) //generates an error for each retry
 			for i = 0; i < bufferLen; i++ {
 				data = append(data, byte(i))
 			}
@@ -340,31 +340,33 @@ var _ = Describe("Pipeline", func() {
 			})
 		})
 		Context("When uploading to a bad destination", func() {
-			It("Generates an error for each failed upload", func() {
+			It("Generates errors for each failed upload, but still emits failed chunks", func() {
 				dest = auth.NewErrorDestination()
 				outChan = UploadData(chunkChan, errorChan, dest, time.Duration(0))
-				for i = 0; i < numChunks; i++ {
-					chunkChan <- FileChunk{
-						Size:      chunkSize,
-						Object:    "Object",
-						Container: "Container",
-						Hash:      "somehexstring",
-						Number:    i,
-						Offset:    i * chunkSize,
-						Data:      data[i*chunkSize : (i+1)*chunkSize],
+				go func() {
+					for i = 0; i < numChunks; i++ {
+						chunkChan <- FileChunk{
+							Size:      chunkSize,
+							Object:    "Object",
+							Container: "Container",
+							Hash:      "somehexstring",
+							Number:    i,
+							Offset:    i * chunkSize,
+							Data:      data[i*chunkSize : (i+1)*chunkSize],
+						}
 					}
-				}
-				close(chunkChan)
+					close(chunkChan)
+				}()
 				for _ = range outChan {
 					count++
 				}
-				Expect(count).To(Equal(uint(0)))
+				Expect(count).To(Equal(uint(numChunks)))
 				close(errorChan)
 				for e := range errorChan {
 					Expect(e).ToNot(BeNil())
 					errCount++
 				}
-				Expect(errCount).To(Equal(numChunks))
+				Expect(errCount).To(BeNumerically(">=", numChunks))
 			})
 		})
 	})
