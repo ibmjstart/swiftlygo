@@ -145,15 +145,13 @@ func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destinat
 		}()
 		var sleep uint = 1
 		for err := attempt(chunk); err != nil; sleep++ { // retry
+			errors <- err
+			if sleep >= maxAttempts {
+				errors <- fmt.Errorf("Final upload attempt for chunk %d failed after %d retries ", chunk.Number, sleep)
+				return
+			}
 			time.Sleep(retryWait * (1 << sleep))
 			err = attempt(chunk)
-			if err != nil {
-				errors <- err
-				if sleep >= maxAttempts {
-					errors <- fmt.Errorf("Final upload attempt for chunk %d failed after %d retries ", chunk.Number, sleep)
-					return
-				}
-			}
 		}
 	}
 	go func() {
