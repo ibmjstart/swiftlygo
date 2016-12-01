@@ -92,9 +92,14 @@ func (b *BufferDestination) FileNames(container string) ([]string, error) {
 	return b.Containers[container], nil
 }
 
-// Objects returns an empty slice of swift Objects.
+// Objects returns a slice of swift Objects corresponding to the objects within
+// the given container. The objects only have their "Name" attribute set.
 func (b *BufferDestination) Objects(container string) ([]swift.Object, error) {
-	return make([]swift.Object, 0), nil
+	objects := make([]swift.Object, 0)
+	for _, name := range b.Containers[container] {
+		objects = append(objects, swift.Object{Name: name})
+	}
+	return objects, nil
 }
 
 // Ensure that BufferDestination satisfies the Destination interface at compile-time
