@@ -3,6 +3,7 @@ package slo
 import (
 	"fmt"
 	"github.com/ibmjstart/swiftlygo/auth"
+	"github.com/ncw/swift"
 	"io"
 	"os"
 	"time"
@@ -41,7 +42,7 @@ func getSize(file *os.File) (uint, error) {
 func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*Uploader, error) {
 	var (
-		serversideChunks []string
+		serversideChunks []swift.Object
 		err              error
 	)
 	if source == nil {
@@ -71,12 +72,24 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 
 	// set up the list of missing chunks
 	if onlyMissing {
-		serversideChunks, err = connection.FileNames(container)
+		serversideChunks, err = connection.Objects(container)
 		if err != nil {
 			outputChannel <- fmt.Sprintf("Problem getting existing chunks names from object storage: %s\n", err)
 		}
 	} else {
-		serversideChunks = make([]string, 0)
+		serversideChunks = make([]swift.Object, 0)
+	}
+
+	// Define a function to associate hashes with chunks that have already
+	// been uploaded
+	hashAssociate := func(chunk FileChunk) (FileChunk, error) {
+		for _, serverObject := range serversideChunks {
+			if serverObject.Name == chunk.Object {
+				chunk.Hash = serverObject.Hash
+				return chunk, nil
+			}
+		}
+		return chunk, nil
 	}
 
 	// Asynchronously print everything that comes in on this channel
@@ -111,33 +124,26 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	errors := make(chan error)
 	chunks := ObjectNamer(intoPipeline, errors, object+"-chunk-%04[1]d-size-%[2]d")
 	chunks = Containerizer(chunks, errors, container)
-	// Read data for chunks
-	chunks = ReadData(chunks, errors, source)
-	// Perform the hash
-	chunks = HashData(chunks, errors)
-	// Perform upload
 	// Separate out chunks that should not be uploaded
 	noupload, chunks := Separate(chunks, errors, func(chunk FileChunk) (bool, error) {
-		for _, chunkName := range serversideChunks {
-			if chunkName == chunk.Object {
+		for _, serverObject := range serversideChunks {
+			if serverObject.Name == chunk.Object {
 				return true, nil
 			}
 		}
 		return false, nil
 	})
+	noupload = Map(noupload, errors, hashAssociate)
+	// Perform upload
 	uploadStreams := Divide(chunks, maxUploads)
 	doneStreams := make([]<-chan FileChunk, maxUploads)
 	for index, stream := range uploadStreams {
-		doneStreams[index] = UploadData(stream, errors, connection, time.Second)
+		doneStreams[index] = ReadHashAndUpload(stream, errors, source, connection)
 	}
-	chunks = Join(doneStreams...)
 	// Join stream of chunks back together
-	chunks = Join(noupload, chunks)
-	chunks = Map(chunks, errors, func(chunk FileChunk) (FileChunk, error) {
-		chunk.Data = nil // Discard data to allow it to be garbage-collected
-		return chunk, nil
-	})
+	chunks = Join(doneStreams...)
 	chunks, uploadCounts := Counter(chunks)
+	chunks = Join(noupload, chunks)
 
 	// Build manifest layer 1
 	manifests := ManifestBuilder(chunks, errors)
