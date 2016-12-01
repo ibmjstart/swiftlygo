@@ -59,14 +59,14 @@ func ReadData(chunks <-chan FileChunk, errors chan<- error, dataSource io.Reader
 	var dataBuffer []byte
 	return Map(chunks, errors, func(chunk FileChunk) (FileChunk, error) {
 		if chunk.Size < 1 {
-			return chunk, fmt.Errorf("ReadData needs chunks with the Size and Number properties set. Encountered chunk %v with no size", chunk)
+			return chunk, fmt.Errorf("ReadData needs chunks with the Size and Number properties set. Encountered chunk %d with no size", chunk.Number)
 		}
 		dataBuffer = make([]byte, chunk.Size)
 		bytesRead, err := dataSource.ReadAt(dataBuffer, int64(chunk.Offset))
 		if err != nil {
 			return chunk, err
 		} else if uint(bytesRead) != chunk.Size {
-			return chunk, fmt.Errorf("Expected to read %d bytes, but only read %d for chunk %v", chunk.Size, bytesRead, chunk)
+			return chunk, fmt.Errorf("Expected to read %d bytes, but only read %d for chunk %d", chunk.Size, bytesRead, chunk.Number)
 		}
 		chunk.Data = dataBuffer
 		return chunk, nil
@@ -99,7 +99,7 @@ func Containerizer(chunks <-chan FileChunk, errors chan<- error, container strin
 func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
 	return Map(chunks, errors, func(chunk FileChunk) (FileChunk, error) {
 		if len(chunk.Data) < 1 {
-			return chunk, fmt.Errorf("Chunks should have data before being hashed, chunk %v lacks data", chunk)
+			return chunk, fmt.Errorf("Chunks should have data before being hashed, chunk %d lacks data", chunk.Number)
 		}
 		sum := md5.Sum(chunk.Data)
 		chunk.Hash = hex.EncodeToString(sum[:])
@@ -242,7 +242,7 @@ func Json(chunks <-chan FileChunk, errors chan<- error) <-chan []byte {
 		for chunk := range chunks {
 			data, err := json.Marshal(chunk)
 			if err != nil {
-				errors <- fmt.Errorf("Problem converting chunk %v to JSON: %s", chunk, err)
+				errors <- fmt.Errorf("Problem converting chunk %d to JSON: %s", chunk.Number, err)
 			}
 			jsonOut <- data
 		}
