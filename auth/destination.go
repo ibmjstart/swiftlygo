@@ -17,6 +17,7 @@ type Destination interface {
 	CreateSLO(containerName, manifestName, manifestEtag string, sloManifestJSON []byte) error
 	CreateDLO(manifestContainer, manifestName, objectContainer, filenamePrefix string) error
 	FileNames(container string) ([]string, error)
+	Objects(container string) ([]swift.Object, error)
 }
 
 // SwiftDestination implements the Destination interface for OpenStack Swift.
@@ -84,6 +85,15 @@ func (s *SwiftDestination) CreateDLO(manifestContainer, manifestName, objectCont
 func (s *SwiftDestination) FileNames(container string) ([]string, error) {
 	return s.SwiftConnection.ObjectNamesAll(container, nil)
 }
+
+// Objects returns a slice of swift Objects that container information about the container's
+// contents.
+func (s *SwiftDestination) Objects(container string) ([]swift.Object, error) {
+	return s.SwiftConnection.ObjectsAll(container, nil)
+}
+
+// Ensure that SwiftDestination satsifies the interface at compile-time
+var _ Destination = &SwiftDestination{}
 
 func getAuthVersion(url string) (int, error) {
 	// Extract auth version from auth URL

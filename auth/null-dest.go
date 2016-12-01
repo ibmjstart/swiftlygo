@@ -1,15 +1,16 @@
 package auth
 
 import (
+	"github.com/ncw/swift"
 	"io"
 )
 
 // NullDestination implements the Destination interface but always returns
 // the zero values of its methods.
-type NullDestination uint8
+type NullDestination struct{}
 
 func NewNullDestination() NullDestination {
-	return NullDestination(0)
+	return NullDestination{}
 }
 
 type nullWriteCloser uint8
@@ -40,3 +41,11 @@ func (s NullDestination) CreateDLO(containerName, manifestName, objectContainer,
 func (s NullDestination) FileNames(container string) ([]string, error) {
 	return []string{}, nil
 }
+
+// Objects returns an empty slice of swift.Object and a nil error
+func (s NullDestination) Objects(container string) ([]swift.Object, error) {
+	return []swift.Object{}, nil
+}
+
+// Check that NullDestination fulfills the destination interface at compile-time
+var _ Destination = NullDestination{}

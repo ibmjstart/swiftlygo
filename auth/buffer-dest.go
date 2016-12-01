@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"github.com/ncw/swift"
 	"io"
 )
 
@@ -90,3 +91,11 @@ func (b *BufferDestination) CreateDLO(containerName, manifestName, objectContain
 func (b *BufferDestination) FileNames(container string) ([]string, error) {
 	return b.Containers[container], nil
 }
+
+// Objects returns an empty slice of swift Objects.
+func (b *BufferDestination) Objects(container string) ([]swift.Object, error) {
+	return make([]swift.Object, 0), nil
+}
+
+// Ensure that BufferDestination satisfies the Destination interface at compile-time
+var _ Destination = &BufferDestination{}
