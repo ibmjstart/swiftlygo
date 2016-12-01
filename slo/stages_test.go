@@ -370,4 +370,92 @@ var _ = Describe("Pipeline", func() {
 			})
 		})
 	})
+	Describe("ReadHashAndUpload", func() {
+		const (
+			chunkSize = 5
+			numChunks = 5
+			bufferLen = chunkSize * numChunks
+		)
+		var (
+			chunkChan          chan FileChunk
+			outChan            <-chan FileChunk
+			errorChan          chan error
+			i, count, errCount uint
+			dest               *auth.BufferDestination
+			data               []byte
+			dataSource         *filebuffer.Buffer
+		)
+		BeforeEach(func() {
+			count = 0
+			errCount = 0
+			data = make([]byte, 0)
+			chunkChan = make(chan FileChunk, numChunks)
+			errorChan = make(chan error, numChunks*6) //generates an error for each retry
+			for i = 0; i < bufferLen; i++ {
+				data = append(data, byte(i))
+			}
+			dataSource = filebuffer.New(data)
+		})
+		Context("When uploading valid chunks", func() {
+			It("Emits chunks with hashes but no data", func() {
+				dataSource.Seek(0, 0)
+				fmt.Fprintf(GinkgoWriter, "Input data: %v", dataSource)
+				dest = auth.NewBufferDestination()
+				outChan = ReadHashAndUpload(chunkChan, errorChan, dataSource, dest)
+				for i = 0; i < numChunks; i++ {
+					chunkChan <- FileChunk{
+						Size:      chunkSize,
+						Object:    fmt.Sprintf("Object-%d", i),
+						Container: "Container",
+						Number:    i,
+						Offset:    i * chunkSize,
+					}
+				}
+				close(chunkChan)
+				for chunk := range outChan {
+					Expect(chunk.Hash).ToNot(Equal(""))
+					Expect(chunk.Data).To(BeNil())
+					fmt.Fprintf(GinkgoWriter, "Chunk out: %v", chunk)
+					count++
+				}
+				close(errorChan)
+				for e := range errorChan {
+					GinkgoWriter.Write([]byte("error: " + e.Error()))
+					Expect(e).To(BeNil())
+					errCount++
+				}
+				Expect(count).To(Equal(uint(numChunks)))
+				Expect(errCount).To(Equal(uint(0)))
+			})
+			It("Uploads all of the data in the right order", func() {
+				dataSource.Seek(0, 0)
+				fmt.Fprintf(GinkgoWriter, "Input data: %v", dataSource)
+				dest = auth.NewBufferDestination()
+				outChan = ReadHashAndUpload(chunkChan, errorChan, dataSource, dest)
+				for i = 0; i < numChunks; i++ {
+					chunkChan <- FileChunk{
+						Size:      chunkSize,
+						Object:    fmt.Sprintf("Object-%d", i),
+						Container: "Container",
+						Number:    i,
+						Offset:    i * chunkSize,
+					}
+				}
+				close(chunkChan)
+				for chunk := range outChan {
+					fmt.Fprintf(GinkgoWriter, "Chunk out: %v", chunk)
+					count++
+				}
+				close(errorChan)
+				for e := range errorChan {
+					GinkgoWriter.Write([]byte("error: " + e.Error()))
+					Expect(e).To(BeNil())
+					errCount++
+				}
+				Expect(count).To(Equal(uint(numChunks)))
+				Expect(errCount).To(Equal(uint(0)))
+				Expect(data).To(Equal(dest.FileContent.Contents.Bytes()))
+			})
+		})
+	})
 })

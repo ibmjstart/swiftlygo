@@ -275,3 +275,91 @@ func Counter(chunks <-chan FileChunk) (<-chan FileChunk, <-chan Count) {
 	}()
 	return outChunks, outCount
 }
+
+// ReadHashAndUpload reads the data, performs the hash, and uploads it. Its monolithic design isn't very
+// modular, but it reads the file and discards the data within a single function, which saves a lot of
+// memory. Use this if memory footprint is a major concern.
+// ReadHashAndUpload requires that incoming chunks have the Size, Number, Offset, Object, and Container
+// properties already set.
+func ReadHashAndUpload(chunks <-chan FileChunk, errors chan<- error, dataSource io.ReaderAt, dest auth.Destination) <-chan FileChunk {
+	// Pre-allocate variables to reduce memory overhead
+	const (
+		bufSize       = 1024 * 4 // 4KiB seems to work quickly, with a low total footprint
+		maxAttempts   = 5
+		retryBaseWait = time.Second
+	)
+	var (
+		dataBuffer = make([]byte, bufSize)
+		hasher     = md5.New()
+		upload     io.WriteCloser
+		err        error
+	)
+	return Map(chunks, errors, func(chunk FileChunk) (FileChunk, error) {
+		// Reject invalid chunks
+		switch {
+		case chunk.Size < 1:
+			return chunk, fmt.Errorf("ReadHashAndUpload needs chunks with the Size and Number properties set. Encountered chunk %d with no size", chunk.Number)
+		case chunk.Object == "":
+			return chunk, fmt.Errorf("ReadHashAndUpload encountered chunk %d with no Object Name", chunk.Number)
+		case chunk.Container == "":
+			return chunk, fmt.Errorf("ReadHashAndUpload encountered chunk %d with no Container Name", chunk.Number)
+		}
+
+		// Loop until an upload succeeds
+	RetryLoop:
+		for attempts := 0; true; attempts++ {
+			// Zero out the old hash since the hasher is reused between iterations
+			hasher.Reset()
+			// Track how many bytes that we've read for the current chunk
+			var bytesReadTotal int64 = 0
+
+			// Create the upload for this chunk. Ask the uploader to check the MD5 sum
+			// itself. We will also compute it because we have no way to access the
+			// one that the upload computes internally, and we need it to generate
+			// the manifest file
+			upload, err = dest.CreateFile(chunk.Container, chunk.Object, true, "")
+			if err != nil {
+				errors <- fmt.Errorf("ReadHashAndUpload encountered an error trying to initialize the upload for chunk %d: %s", chunk.Number, err)
+				continue RetryLoop
+			}
+
+			// Loop until we've read all of the bytes for this chunk
+			for uint(bytesReadTotal) < chunk.Size {
+				bytesRead, err := dataSource.ReadAt(dataBuffer, int64(chunk.Offset)+bytesReadTotal)
+				if err != nil && err != io.EOF {
+					errors <- fmt.Errorf("Error reading chunk %d: %s", chunk.Number, err)
+					continue RetryLoop
+				}
+				chunkEndDepth := int64(bytesRead)
+				// If this is the last buffer of data for this chunk, ensure that future slices
+				// don't catch garbage data at the end of the buffer.
+				if bytesRemaining := int64(chunk.Size) - bytesReadTotal; bytesRemaining < chunkEndDepth {
+					chunkEndDepth = bytesRemaining
+				}
+
+				hasher.Write(dataBuffer[:chunkEndDepth])          // Add data to running hash
+				_, err = upload.Write(dataBuffer[:chunkEndDepth]) // Add data to running upload
+				if err != nil {
+					errors <- fmt.Errorf("Error uploading chunk %d: %s", chunk.Number, err)
+					continue RetryLoop
+				}
+
+				// Update the total bytes read
+				bytesReadTotal += int64(bytesRead)
+			}
+			// Get final hash for data
+			chunk.Hash = hex.EncodeToString(hasher.Sum(nil))
+			// Finalize upload
+			err = upload.Close()
+			if err != nil {
+				errors <- fmt.Errorf("Error closing upload for chunk %d: %s", chunk.Number, err)
+			}
+			// Exit loop if we retry the max times or if we succeed
+			if attempts > maxAttempts || err == nil {
+				break RetryLoop
+			}
+			time.Sleep(retryBaseWait << uint(attempts))
+		}
+		return chunk, nil
+	})
+}
