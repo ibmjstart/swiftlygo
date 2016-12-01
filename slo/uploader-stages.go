@@ -55,6 +55,8 @@ func min(a, b uint) uint {
 // with the data from the dataSource corresponding to that chunk's region
 // of the file and sends its errors back on the errors channel. In order to work
 // ReadData needs chunks with the Size and Offset properties set.
+//
+// Deprecated: This consumes unnecessary memory. Use ReadHashAndUpload instead.
 func ReadData(chunks <-chan FileChunk, errors chan<- error, dataSource io.ReaderAt) <-chan FileChunk {
 	var dataBuffer []byte
 	return Map(chunks, errors, func(chunk FileChunk) (FileChunk, error) {
@@ -96,6 +98,8 @@ func Containerizer(chunks <-chan FileChunk, errors chan<- error, container strin
 
 // HashData attaches the hash of a FileChunk's data. Do not give it FileChunks without
 // Data attached. It returns errors if you do.
+//
+// Deprecated: This consumes unnecessary memory. Use ReadHashAndUpload instead.
 func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
 	return Map(chunks, errors, func(chunk FileChunk) (FileChunk, error) {
 		if len(chunk.Data) < 1 {
@@ -112,6 +116,8 @@ func HashData(chunks <-chan FileChunk, errors chan<- error) <-chan FileChunk {
 // retrying on failure. It requires all fields of the FileChunk to be filled out before
 // attempting an upload, and will send errors if it encountes FileChunks with missing
 // fields. The retry wait is the base wait before a retry is attempted.
+//
+// Deprecated: This consumes unnecessary memory. Use ReadHashAndUpload instead.
 func UploadData(chunks <-chan FileChunk, errors chan<- error, dest auth.Destination, retryWait time.Duration) <-chan FileChunk {
 	const maxAttempts = 5
 	dataChunks := make(chan FileChunk)
