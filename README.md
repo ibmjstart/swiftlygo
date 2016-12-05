@@ -3,6 +3,7 @@
 
 [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
 [![Build Status](https://travis-ci.org/ibmjstart/swiftlygo.svg?branch=master)](https://travis-ci.org/ibmjstart/swiftlygo)
+[![GoDoc](https://godoc.org/github.com/ibmjstart/swiftlygo?status.svg)](https://godoc.org/github.com/ibmjstart/swiftlygo)
 
 > Golang library for creating Static and Dynamic Large Objects in OpenStack Swift
 
