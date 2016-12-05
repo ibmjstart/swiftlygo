@@ -76,7 +76,7 @@ func Fork(chunks <-chan FileChunk) (<-chan FileChunk, <-chan FileChunk) {
 }
 
 // Divide distributes the input channel across divisor new channels, which
-// are returned in a slice. It will return an error if divisor is 0.
+// are returned in a slice.
 func Divide(chunks <-chan FileChunk, divisor uint) []chan FileChunk {
 	chans := make([]chan FileChunk, divisor)
 	for i, _ := range chans {
