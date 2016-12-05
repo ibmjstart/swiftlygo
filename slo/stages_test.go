@@ -3,6 +3,7 @@ package slo_test
 import (
 	"fmt"
 	"github.com/ibmjstart/swiftlygo/auth"
+	"github.com/ibmjstart/swiftlygo/auth/mock"
 	"github.com/mattetti/filebuffer"
 	"time"
 
@@ -248,7 +249,7 @@ var _ = Describe("Pipeline", func() {
 		})
 		Context("When uploading valid chunks", func() {
 			It("Sends back no errors", func() {
-				dest = auth.NewBufferDestination()
+				dest = mock.NewBufferDestination()
 				outChan = UploadData(chunkChan, errorChan, dest, time.Duration(0))
 				for i = 0; i < numChunks; i++ {
 					chunkChan <- FileChunk{
@@ -279,7 +280,7 @@ var _ = Describe("Pipeline", func() {
 				var (
 					chunkStart uint = 0
 				)
-				dest = auth.NewBufferDestination()
+				dest = mock.NewBufferDestination()
 				outChan = UploadData(chunkChan, errorChan, dest, time.Duration(0))
 
 				for _, chunk := range []FileChunk{
@@ -341,7 +342,7 @@ var _ = Describe("Pipeline", func() {
 		})
 		Context("When uploading to a bad destination", func() {
 			It("Generates errors for each failed upload, but still emits failed chunks", func() {
-				dest = auth.NewErrorDestination()
+				dest = mock.NewErrorDestination()
 				outChan = UploadData(chunkChan, errorChan, dest, time.Duration(0))
 				go func() {
 					for i = 0; i < numChunks; i++ {
@@ -381,7 +382,7 @@ var _ = Describe("Pipeline", func() {
 			outChan            <-chan FileChunk
 			errorChan          chan error
 			i, count, errCount uint
-			dest               *auth.BufferDestination
+			dest               *mock.BufferDestination
 			data               []byte
 			dataSource         *filebuffer.Buffer
 		)
@@ -400,7 +401,7 @@ var _ = Describe("Pipeline", func() {
 			It("Emits chunks with hashes but no data", func() {
 				dataSource.Seek(0, 0)
 				fmt.Fprintf(GinkgoWriter, "Input data: %v", dataSource)
-				dest = auth.NewBufferDestination()
+				dest = mock.NewBufferDestination()
 				outChan = ReadHashAndUpload(chunkChan, errorChan, dataSource, dest)
 				for i = 0; i < numChunks; i++ {
 					chunkChan <- FileChunk{
@@ -430,7 +431,7 @@ var _ = Describe("Pipeline", func() {
 			It("Uploads all of the data in the right order", func() {
 				dataSource.Seek(0, 0)
 				fmt.Fprintf(GinkgoWriter, "Input data: %v", dataSource)
-				dest = auth.NewBufferDestination()
+				dest = mock.NewBufferDestination()
 				outChan = ReadHashAndUpload(chunkChan, errorChan, dataSource, dest)
 				for i = 0; i < numChunks; i++ {
 					chunkChan <- FileChunk{

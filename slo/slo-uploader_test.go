@@ -1,7 +1,7 @@
 package slo_test
 
 import (
-	"github.com/ibmjstart/swiftlygo/auth"
+	"github.com/ibmjstart/swiftlygo/auth/mock"
 	. "github.com/ibmjstart/swiftlygo/slo"
 
 	"fmt"
@@ -17,12 +17,12 @@ var _ = Describe("Uploader", func() {
 		tempfile    *os.File
 		err         error
 		fileSize    int64 = 1024
-		destination *auth.BufferDestination
+		destination *mock.BufferDestination
 	)
 
 	BeforeEach(func() {
 		tempfile.Seek(0, 0)
-		destination = auth.NewBufferDestination()
+		destination = mock.NewBufferDestination()
 	})
 
 	BeforeSuite(func() {
