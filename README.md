@@ -134,7 +134,7 @@ func main() {
 	if err != nil {
 		// connection failed, handle appropriately
 	}
-	uploader, err := slo.NewDloManifestUploader(destination,
+	uploader, err := NewDloManifestUploader(destination,
 		"dlo container name",//name of the container the manifest will be created in
 		"manifest name",
 		"object container",//name of the container the DLO's segments will be in
