@@ -5,7 +5,7 @@ import (
 	"github.com/ibmjstart/swiftlygo/auth"
 )
 
-type dloManifestUploader struct {
+type DloManifestUploader struct {
 	dloContainer    string
 	dloName         string
 	objectContainer string
@@ -18,8 +18,8 @@ type dloManifestUploader struct {
 // the objectContainer determines which container the DLO will look in for
 // files beginning with the given prefix. This allows you to store the DLO
 // in one container while referencing files within another.
-func NewDloManifestUploader(connection auth.Destination, dloContainer, dloName, objectContainer, prefix string) *dloManifestUploader {
-	return &dloManifestUploader{
+func NewDloManifestUploader(connection auth.Destination, dloContainer, dloName, objectContainer, prefix string) *DloManifestUploader {
+	return &DloManifestUploader{
 		dloContainer:    dloContainer,
 		dloName:         dloName,
 		objectContainer: objectContainer,
@@ -29,7 +29,7 @@ func NewDloManifestUploader(connection auth.Destination, dloContainer, dloName, 
 }
 
 // Upload actually performs the upload that creates the DLO.
-func (d *dloManifestUploader) Upload() error {
+func (d *DloManifestUploader) Upload() error {
 	err := d.connection.CreateDLO(d.dloContainer, d.dloName, d.objectContainer, d.prefix)
 	if err != nil {
 		return fmt.Errorf("Failed to upload DLO: %s", err)
