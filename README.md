@@ -123,9 +123,8 @@ Here's an example of using the DLO API to create a manifest.
 package example
 
 import (
-	"github.com/ibmjstart/swiftlygo/auth"
 	"github.com/ibmjstart/swiftlygo"
-	"os"
+	"github.com/ibmjstart/swiftlygo/auth"
 )
 
 func main() {
@@ -134,11 +133,11 @@ func main() {
 	if err != nil {
 		// connection failed, handle appropriately
 	}
-	uploader, err := NewDloManifestUploader(destination,
-		"dlo container name",//name of the container the manifest will be created in
+	uploader := swiftlygo.NewDloManifestUploader(destination,
+		"dlo container name", //name of the container the manifest will be created in
 		"manifest name",
-		"object container",//name of the container the DLO's segments will be in
-		"prefix-")//prefix for files that are segments of this DLO
+		"object container", //name of the container the DLO's segments will be in
+		"prefix-")          //prefix for files that are segments of this DLO
 	if err != nil {
 		// there was an error preparing the upload, handle appropriately
 	}
