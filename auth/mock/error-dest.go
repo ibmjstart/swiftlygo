@@ -1,7 +1,8 @@
-package auth
+package mock
 
 import (
 	"fmt"
+	"github.com/ibmjstart/swiftlygo/auth"
 	"github.com/ncw/swift"
 	"io"
 )
@@ -40,4 +41,4 @@ func (s ErrorDestination) Objects(container string) ([]swift.Object, error) {
 }
 
 // Ensure that ErrorDestination implements the Destination interface at compile-time
-var _ Destination = ErrorDestination{}
+var _ auth.Destination = ErrorDestination{}

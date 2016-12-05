@@ -1,7 +1,8 @@
-package auth
+package mock
 
 import (
 	"bytes"
+	"github.com/ibmjstart/swiftlygo/auth"
 	"github.com/ncw/swift"
 	"io"
 )
@@ -103,4 +104,4 @@ func (b *BufferDestination) Objects(container string) ([]swift.Object, error) {
 }
 
 // Ensure that BufferDestination satisfies the Destination interface at compile-time
-var _ Destination = &BufferDestination{}
+var _ auth.Destination = &BufferDestination{}

@@ -1,6 +1,7 @@
-package auth
+package mock
 
 import (
+	"github.com/ibmjstart/swiftlygo/auth"
 	"github.com/ncw/swift"
 	"io"
 )
@@ -48,4 +49,4 @@ func (s NullDestination) Objects(container string) ([]swift.Object, error) {
 }
 
 // Check that NullDestination fulfills the destination interface at compile-time
-var _ Destination = NullDestination{}
+var _ auth.Destination = NullDestination{}
