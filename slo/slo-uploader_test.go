@@ -104,7 +104,7 @@ var _ = Describe("Uploader", func() {
 				if err != nil {
 					Fail(fmt.Sprintf("Unable to read data from temporary file: %s", err))
 				}
-				bytesWrittenToDestination, err := destination.FileContent.Contents.Read(dataWrittenBuffer)
+				bytesWrittenToDestination, _ := destination.FileContent.Contents.Read(dataWrittenBuffer)
 				Expect(bytesWrittenToDestination).To(Equal(bytesReadFromTempFile))
 				for index, writtenByte := range dataWrittenBuffer {
 					Expect(writtenByte).To(Equal(fileReadBuffer[index]))
@@ -122,7 +122,7 @@ var _ = Describe("Uploader", func() {
 				if err != nil {
 					Fail(fmt.Sprintf("Unable to read data from temporary file: %s", err))
 				}
-				bytesWrittenToDestination, err := destination.FileContent.Contents.Read(dataWrittenBuffer)
+				bytesWrittenToDestination, _ := destination.FileContent.Contents.Read(dataWrittenBuffer)
 				Expect(bytesWrittenToDestination).To(Equal(bytesReadFromTempFile))
 				for index, writtenByte := range dataWrittenBuffer {
 					Expect(writtenByte).To(Equal(fileReadBuffer[index]))
@@ -145,7 +145,7 @@ var _ = Describe("Uploader", func() {
 				if err != nil {
 					Fail(fmt.Sprintf("Unable to read data from temporary file: %s", err))
 				}
-				bytesWrittenToDestination, err := destination.FileContent.Contents.Read(dataWrittenBuffer)
+				bytesWrittenToDestination, _ := destination.FileContent.Contents.Read(dataWrittenBuffer)
 				// Check that a single chunk was not written
 				Expect(bytesWrittenToDestination + chunkSize).To(Equal(bytesReadFromTempFile))
 			})
