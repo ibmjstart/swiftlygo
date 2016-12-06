@@ -14,27 +14,27 @@ type Count struct {
 	Elapsed time.Duration
 }
 
-// Returns the rate of data flow in bytes per second
+// Rate returns the rate of data flow in bytes per second
 func (c Count) Rate() float64 {
 	return float64(c.Bytes) / float64(c.Elapsed.Seconds())
 }
 
-// Returns the rate of data flow in kilobytes per second
+// RateKBPS returns the rate of data flow in kilobytes per second
 func (c Count) RateKBPS() float64 {
 	return c.Rate() / 1000
 }
 
-// Returns the rate of data flow in kibibytes per second
+// RateKiBPS returns the rate of data flow in kibibytes per second
 func (c Count) RateKiBPS() float64 {
 	return c.Rate() / 1024
 }
 
-// Returns the rate of data flow in megabytes per second
+// RateMBPS returns the rate of data flow in megabytes per second
 func (c Count) RateMBPS() float64 {
 	return c.RateKBPS() / 1000
 }
 
-// Returns the rate of data flow in mebibytes per second
+// RateMiBPS returns the rate of data flow in mebibytes per second
 func (c Count) RateMiBPS() float64 {
 	return c.RateKiBPS() / 1024
 }

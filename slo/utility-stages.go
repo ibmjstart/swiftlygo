@@ -88,7 +88,7 @@ func Divide(chunks <-chan FileChunk, divisor uint) []chan FileChunk {
 				close(channel)
 			}
 		}()
-		var count uint = 0
+		var count uint
 		for chunk := range chunks {
 			chans[count%divisor] <- chunk
 			count++

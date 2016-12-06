@@ -31,7 +31,7 @@ func BuildChunks(dataSize, chunkSize uint) (<-chan FileChunk, uint) {
 	}
 	go func() {
 		defer close(chunks)
-		var currentChunkNumber uint = 0
+		var currentChunkNumber uint
 		for currentChunkNumber*chunkSize < dataSize {
 			chunks <- FileChunk{
 				Number: currentChunkNumber,
@@ -185,7 +185,7 @@ func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileCh
 	manifestOut := make(chan FileChunk)
 	go func() {
 		defer close(manifestOut)
-		masterManifest := make([]FileChunk, 0)
+		var masterManifest []FileChunk
 		for chunk := range chunks {
 			//chunk numbers are zero based, but lengths are 1-based
 			for chunk.Number+1 > uint(len(masterManifest)) {
@@ -198,8 +198,8 @@ func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileCh
 		for i := 0; i*1000 < len(masterManifest); i++ {
 			var (
 				data         []FileChunk
-				apparentSize uint   = 0
-				etags        string = ""
+				apparentSize uint
+				etags        string
 			)
 			if (i+1)*1000 >= len(masterManifest) {
 				data = masterManifest[i*1000:]
@@ -317,7 +317,7 @@ func ReadHashAndUpload(chunks <-chan FileChunk, errors chan<- error, dataSource 
 			// Zero out the old hash since the hasher is reused between iterations
 			hasher.Reset()
 			// Track how many bytes that we've read for the current chunk
-			var bytesReadTotal int64 = 0
+			var bytesReadTotal int64
 
 			// Create the upload for this chunk. Ask the uploader to check the MD5 sum
 			// itself. We will also compute it because we have no way to access the

@@ -1,4 +1,4 @@
-// swiftlygo makes working with Large Objects in OpenStack Object Storage easier.
+// Package swiftlygo makes working with Large Objects in OpenStack Object Storage easier.
 //
 // The auth subpackage provides a convenient abstraction for talking to an
 // Object Storage instance.

@@ -5,6 +5,8 @@ import (
 	"github.com/ibmjstart/swiftlygo/auth"
 )
 
+// DloManifestUploader prepares and executes the upload of a Dynamic Large
+// Object manifest.
 type DloManifestUploader struct {
 	dloContainer    string
 	dloName         string

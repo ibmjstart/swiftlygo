@@ -39,6 +39,9 @@ func getSize(file *os.File) (uint, error) {
 	return uint(dataStats.Size()), nil
 }
 
+// NewUploader prepares an upload for an SLO by constructing a data pipeline that will
+// read the provided file, split it into pieces of chunkSize bytes, and upload it into
+// the provided destination in the provided container with the given object name.
 func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*Uploader, error) {
 	var (
@@ -176,7 +179,7 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 
 // Upload uploads the sloUploader's source file to object storage
 func (u *Uploader) Upload() error {
-	var errCount uint = 0
+	var errCount uint
 	u.Status.start()
 	// drain the upload counts
 	go func() {
