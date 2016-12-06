@@ -68,12 +68,9 @@ chunks, and each chunk will be uploaded to Object Storage as a separate file. Af
 have been uploaded, the SLO manifest file will be uploaded. If this process is completed successfully,
 You will be able to reference the entire file by the name of the manifest.
 
-Unfortunately, network problems and hard drive failures exist. Here are some robustness/troubleshooting hints:
-- The SLO manifest file is generated while the uploads are in progress. In order to generate the manifest, each chunks of the file must be hashed. If your upload fails, this progress is lost. If/when you retry the upload, even if you opt to upload only missing chunks (see below), you will still need to hash the chunks that you've already uploaded to regenerate the part of the manifest that references those chunks. This can be extremely slow, but it can be worked around. The current state of the manifest file is exposed by `slo.Uploader.ManifestJSON`. You can save this json data and use it to retry later (on a different instance of `slo.Uploader`) with the `slo.Uploader.UploadFromPrevious` method.
-- If your upload is interrupted, you can ensure that the boolean `onlyMissing` parameter to `slo.NewUploader` is set to `true`, which will skip all uploads for which the files are already present within the targeted object storage container.
-- If you are unable to read a chunk of your file for some reason, you can pass the chunk number(s) to `slo.Uploader.Upload` as one of the `excludedChunks` parameters. This will skip the upload step for that chunk.
+If your upload is interrupted, you can ensure that the boolean `onlyMissing` parameter to `slo.NewUploader` is set to `true`, which will skip all uploads for which the files are already present within the targeted object storage container. This can save a lot of time if you were most of the way through a previous upload.
 
-Here's a simple example of using the SLO API to upload a file. Note that it doesn't implement the more advanced features above.
+Here's a simple example of using the SLO API to upload a file.
 ```go
 package example
 
@@ -94,7 +91,7 @@ func main() {
 		// reading file failed, handle appropriately
 	}
 	uploader, err := slo.NewUploader(destination,
-		10,//file chunk size in bytes (set to something larger for real files)
+		10000000,//file chunk size in bytes (set to something larger for real files)
 		"container name",
 		"object name",//name that you want to reference the whole SLO by
 		uploadFile,
