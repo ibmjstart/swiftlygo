@@ -134,6 +134,9 @@ func Authenticate(username, apiKey, authURL, domain, tenant string) (Destination
 	return &SwiftDestination{SwiftConnection: &connection}, nil
 }
 
+// AuthenticateWithToken logs in to OpenStack object storage using the authentication token and
+// storage url and returns a connection to the object store. It also checks that the connection is
+// valid.
 func AuthenticateWithToken(authToken, storageUrl string) (Destination, error) {
 	connection := swift.Connection{
 		StorageUrl: storageUrl,
