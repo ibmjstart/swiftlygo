@@ -91,7 +91,7 @@ func main() {
 		// reading file failed, handle appropriately
 	}
 	uploader, err := slo.NewUploader(destination,
-		10000000,//file chunk size in bytes (set to something larger for real files)
+		10000000,//file chunk size in bytes (set to something larger for multi-gigabyte files and something smaller for files < 10MB)
 		"container name",
 		"object name",//name that you want to reference the whole SLO by
 		uploadFile,
