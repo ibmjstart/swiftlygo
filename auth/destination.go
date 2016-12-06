@@ -133,3 +133,16 @@ func Authenticate(username, apiKey, authURL, domain, tenant string) (Destination
 	}
 	return &SwiftDestination{SwiftConnection: &connection}, nil
 }
+
+func AuthenticateWithToken(authToken, storageUrl string) (Destination, error) {
+	connection := swift.Connection{
+		StorageUrl: storageUrl,
+		AuthToken:  authToken,
+	}
+
+	if !connection.Authenticated() {
+		return &SwiftDestination{SwiftConnection: &connection}, fmt.Errorf("Connection not authenticated")
+	}
+
+	return &SwiftDestination{SwiftConnection: &connection}, nil
+}
