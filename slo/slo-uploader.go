@@ -181,14 +181,14 @@ func (u *Uploader) Upload() error {
 	// drain the upload counts
 	go func() {
 		defer u.Status.stop()
-		for _ = range u.uploadCounts {
+		for range u.uploadCounts {
 			u.Status.uploadComplete()
 		}
 	}()
 	// close the errors channel after topManifests is empty
 	go func() {
 		defer close(u.errors)
-		for _ = range u.pipelineOut {
+		for range u.pipelineOut {
 			fmt.Print()
 		}
 		fmt.Print()

@@ -202,7 +202,7 @@ func ManifestBuilder(chunks <-chan FileChunk, errors chan<- error) <-chan FileCh
 				etags        string = ""
 			)
 			if (i+1)*1000 >= len(masterManifest) {
-				data = masterManifest[i*1000 : len(masterManifest)]
+				data = masterManifest[i*1000:]
 			} else {
 				data = masterManifest[i*1000 : (i+1)*1000]
 			}

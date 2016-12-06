@@ -79,7 +79,7 @@ func Fork(chunks <-chan FileChunk) (<-chan FileChunk, <-chan FileChunk) {
 // are returned in a slice.
 func Divide(chunks <-chan FileChunk, divisor uint) []chan FileChunk {
 	chans := make([]chan FileChunk, divisor)
-	for i, _ := range chans {
+	for i := range chans {
 		chans[i] = make(chan FileChunk)
 	}
 	go func() {
@@ -122,7 +122,7 @@ func Join(chans ...<-chan FileChunk) <-chan FileChunk {
 // contents to the void.
 func Consume(channel <-chan FileChunk) {
 	go func() {
-		for _ = range channel {
+		for range channel {
 		}
 	}()
 }

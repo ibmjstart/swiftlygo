@@ -34,7 +34,7 @@ var _ = Describe("Pipeline", func() {
 				} {
 					outChan, _ = BuildChunks(params.DataSize, params.ChunkSize)
 					count = 0
-					for _ = range outChan {
+					for range outChan {
 						count++
 					}
 					Expect(count).To(Equal(0))
@@ -97,7 +97,7 @@ var _ = Describe("Pipeline", func() {
 					}
 				}
 				close(chunkChan)
-				for _ = range outChan {
+				for range outChan {
 					count++
 				}
 				close(errorChan)
@@ -178,7 +178,7 @@ var _ = Describe("Pipeline", func() {
 					}
 				}
 				close(chunkChan)
-				for _ = range outChan {
+				for range outChan {
 					count++
 				}
 				close(errorChan)
@@ -263,7 +263,7 @@ var _ = Describe("Pipeline", func() {
 					}
 				}
 				close(chunkChan)
-				for _ = range outChan {
+				for range outChan {
 					count++
 				}
 				Expect(count).To(Equal(numChunks))
@@ -284,7 +284,7 @@ var _ = Describe("Pipeline", func() {
 				outChan = UploadData(chunkChan, errorChan, dest, time.Duration(0))
 
 				for _, chunk := range []FileChunk{
-					FileChunk{ //missing Size
+					{ //missing Size
 						Object:    "Object",
 						Container: "Container",
 						Hash:      "somehexstring",
@@ -292,7 +292,7 @@ var _ = Describe("Pipeline", func() {
 						Offset:    chunkStart * chunkSize,
 						Data:      data[chunkStart*chunkSize : (chunkStart+1)*chunkSize],
 					},
-					FileChunk{ //missing Object
+					{ //missing Object
 						Size:      chunkSize,
 						Container: "Container",
 						Hash:      "somehexstring",
@@ -300,7 +300,7 @@ var _ = Describe("Pipeline", func() {
 						Offset:    chunkStart * chunkSize,
 						Data:      data[chunkStart*chunkSize : (chunkStart+1)*chunkSize],
 					},
-					FileChunk{ //missing Container
+					{ //missing Container
 						Size:   chunkSize,
 						Object: "Object",
 						Hash:   "somehexstring",
@@ -308,7 +308,7 @@ var _ = Describe("Pipeline", func() {
 						Offset: chunkStart * chunkSize,
 						Data:   data[chunkStart*chunkSize : (chunkStart+1)*chunkSize],
 					},
-					FileChunk{ //missing Hash
+					{ //missing Hash
 						Size:      chunkSize,
 						Object:    "Object",
 						Container: "Container",
@@ -316,7 +316,7 @@ var _ = Describe("Pipeline", func() {
 						Offset:    chunkStart * chunkSize,
 						Data:      data[chunkStart*chunkSize : (chunkStart+1)*chunkSize],
 					},
-					FileChunk{ //missing Data
+					{ //missing Data
 						Size:      chunkSize,
 						Object:    "Object",
 						Container: "Container",
@@ -328,7 +328,7 @@ var _ = Describe("Pipeline", func() {
 					chunkChan <- chunk
 				}
 				close(chunkChan)
-				for _ = range outChan {
+				for range outChan {
 					count++
 				}
 				Expect(count).To(Equal(uint(0)))
@@ -358,7 +358,7 @@ var _ = Describe("Pipeline", func() {
 					}
 					close(chunkChan)
 				}()
-				for _ = range outChan {
+				for range outChan {
 					count++
 				}
 				Expect(count).To(Equal(uint(numChunks)))
