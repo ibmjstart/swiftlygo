@@ -9,19 +9,19 @@ import (
 
 // closableBuffer wraps the bytes.Buffer with the close method so that it can be used
 // as an io.WriteCloser
-type ClosableBuffer struct {
+type closableBuffer struct {
 	Contents *bytes.Buffer
 }
 
-func NewClosableBuffer() *ClosableBuffer {
-	return &ClosableBuffer{Contents: bytes.NewBuffer(make([]byte, 0))}
+func newClosableBuffer() *closableBuffer {
+	return &closableBuffer{Contents: bytes.NewBuffer(make([]byte, 0))}
 }
 
-func (c *ClosableBuffer) Close() error {
+func (c *closableBuffer) Close() error {
 	return nil
 }
 
-func (c *ClosableBuffer) Write(p []byte) (int, error) {
+func (c *closableBuffer) Write(p []byte) (int, error) {
 	return c.Contents.Write(p)
 }
 
@@ -30,14 +30,14 @@ func (c *ClosableBuffer) Write(p []byte) (int, error) {
 // retrieval and testing.
 type BufferDestination struct {
 	Containers      map[string][]string
-	FileContent     *ClosableBuffer
+	FileContent     *closableBuffer
 	ManifestContent *bytes.Buffer
 }
 
 // NewBufferDestination creates a new instance of BufferDestination
 func NewBufferDestination() *BufferDestination {
 	return &BufferDestination{
-		FileContent:     NewClosableBuffer(),
+		FileContent:     newClosableBuffer(),
 		Containers:      make(map[string][]string, 0),
 		ManifestContent: bytes.NewBuffer(make([]byte, 0)),
 	}
@@ -96,7 +96,7 @@ func (b *BufferDestination) FileNames(container string) ([]string, error) {
 // Objects returns a slice of swift Objects corresponding to the objects within
 // the given container. The objects only have their "Name" attribute set.
 func (b *BufferDestination) Objects(container string) ([]swift.Object, error) {
-	objects := make([]swift.Object, 0)
+	var objects []swift.Object
 	for _, name := range b.Containers[container] {
 		objects = append(objects, swift.Object{Name: name})
 	}
