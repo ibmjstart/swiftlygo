@@ -55,9 +55,9 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	outputChannel := make(chan string, 10)
 
 	if container == "" {
-		return nil, fmt.Errorf("Container name cannot be the emtpy string")
+		return nil, fmt.Errorf("Container name cannot be the empty string")
 	} else if object == "" {
-		return nil, fmt.Errorf("Object name cannot be the emtpy string")
+		return nil, fmt.Errorf("Object name cannot be the empty string")
 	}
 
 	if chunkSize > maxChunkSize || chunkSize < 1 {

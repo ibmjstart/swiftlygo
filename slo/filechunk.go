@@ -22,7 +22,7 @@ type FileChunk struct {
 	Offset    uint
 }
 
-// MarshalJSON defines the tranformation from a FileChunk to an SLO manifest entry
+// MarshalJSON defines the transformation from a FileChunk to an SLO manifest entry
 func (f FileChunk) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("{\"path\":\"%s\",\"etag\":\"%s\",\"size_bytes\":%d}", f.Path(), f.Hash, f.Size)), nil
 }
