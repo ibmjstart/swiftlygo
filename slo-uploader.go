@@ -18,8 +18,8 @@ const maxFileChunks uint = 1000
 // OpenStack object storage.
 const maxChunkSize uint = 1000 * 1000 * 1000 * 5
 
-// Uploader uploads a file to object storage
-type Uploader struct {
+// SloUploader uploads a file to object storage
+type SloUploader struct {
 	outputChannel  chan string
 	Status         *Status
 	source         io.ReaderAt
@@ -43,8 +43,8 @@ func getSize(file *os.File) (uint, error) {
 // NewUploader prepares an upload for an SLO by constructing a data pipeline that will
 // read the provided file, split it into pieces of chunkSize bytes, and upload it into
 // the provided destination in the provided container with the given object name.
-func NewUploader(connection auth.Destination, chunkSize uint, container string,
-	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*Uploader, error) {
+func NewSloUploader(connection auth.Destination, chunkSize uint, container string,
+	object string, source *os.File, maxUploads uint, onlyMissing bool, outputFile io.Writer) (*SloUploader, error) {
 	var (
 		serversideChunks []swift.Object
 		err              error
@@ -164,7 +164,7 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 	topManifests = Map(topManifests, errors, printManifest)
 	topManifests = UploadManifests(topManifests, errors, connection)
 
-	return &Uploader{
+	return &SloUploader{
 		outputChannel:  outputChannel,
 		Status:         status,
 		connection:     connection,
@@ -179,7 +179,7 @@ func NewUploader(connection auth.Destination, chunkSize uint, container string,
 }
 
 // Upload uploads the sloUploader's source file to object storage
-func (u *Uploader) Upload() error {
+func (u *SloUploader) Upload() error {
 	var errCount uint
 	u.Status.start()
 	// drain the upload counts

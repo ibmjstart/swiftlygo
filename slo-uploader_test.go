@@ -47,37 +47,37 @@ var _ = Describe("Uploader", func() {
 	Describe("Creating an Uploader", func() {
 		Context("With valid input", func() {
 			It("Should not return an error", func() {
-				_, err = NewUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
+				_, err = NewSloUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 		})
 		Context("With invalid chunk size", func() {
 			It("Should return an error", func() {
-				_, err = NewUploader(destination, 0, "container", "object", tempfile, 1, false, ioutil.Discard)
+				_, err = NewSloUploader(destination, 0, "container", "object", tempfile, 1, false, ioutil.Discard)
 				Expect(err).Should(HaveOccurred())
 			})
 		})
 		Context("With empty string as container name", func() {
 			It("Should return an error", func() {
-				_, err = NewUploader(destination, 10, "", "object", tempfile, 1, false, ioutil.Discard)
+				_, err = NewSloUploader(destination, 10, "", "object", tempfile, 1, false, ioutil.Discard)
 				Expect(err).Should(HaveOccurred())
 			})
 		})
 		Context("With empty string as object name", func() {
 			It("Should return an error", func() {
-				_, err = NewUploader(destination, 10, "container", "", tempfile, 1, false, ioutil.Discard)
+				_, err = NewSloUploader(destination, 10, "container", "", tempfile, 1, false, ioutil.Discard)
 				Expect(err).Should(HaveOccurred())
 			})
 		})
 		Context("With nil as the file to upload", func() {
 			It("Should return an error", func() {
-				_, err = NewUploader(destination, 10, "container", "object", nil, 1, false, ioutil.Discard)
+				_, err = NewSloUploader(destination, 10, "container", "object", nil, 1, false, ioutil.Discard)
 				Expect(err).Should(HaveOccurred())
 			})
 		})
 		Context("With zero uploaders", func() {
 			It("Should return an error", func() {
-				_, err = NewUploader(destination, 10, "container", "object", tempfile, 0, false, ioutil.Discard)
+				_, err = NewSloUploader(destination, 10, "container", "object", tempfile, 0, false, ioutil.Discard)
 				Expect(err).Should(HaveOccurred())
 			})
 		})
@@ -85,7 +85,7 @@ var _ = Describe("Uploader", func() {
 	Describe("Performing an upload", func() {
 		Context("With valid constructor input", func() {
 			It("Should upload successfully", func() {
-				uploader, err := NewUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
+				uploader, err := NewSloUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = uploader.Upload()
 				Expect(err).ShouldNot(HaveOccurred())
@@ -93,7 +93,7 @@ var _ = Describe("Uploader", func() {
 		})
 		Context("Uploading test data", func() {
 			It("Should upload the same data that was in the file", func() {
-				uploader, err := NewUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
+				uploader, err := NewSloUploader(destination, 10, "container", "object", tempfile, 1, false, ioutil.Discard)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = uploader.Upload()
 				Expect(err).ShouldNot(HaveOccurred())
@@ -111,7 +111,7 @@ var _ = Describe("Uploader", func() {
 				}
 			})
 			It("Should upload correctly when chunk size is a factor of file size", func() {
-				uploader, err := NewUploader(destination, uint(fileSize/2), "container", "object", tempfile, 1, false, ioutil.Discard)
+				uploader, err := NewSloUploader(destination, uint(fileSize/2), "container", "object", tempfile, 1, false, ioutil.Discard)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = uploader.Upload()
 				Expect(err).ShouldNot(HaveOccurred())
@@ -134,7 +134,7 @@ var _ = Describe("Uploader", func() {
 				chunkName := "object-chunk-0000-size-10"
 				destination.Containers["container"] = append(destination.Containers["container"], chunkName)
 				chunkSize := 10
-				uploader, err := NewUploader(destination, uint(chunkSize), "container", "object", tempfile, 1, true, ioutil.Discard)
+				uploader, err := NewSloUploader(destination, uint(chunkSize), "container", "object", tempfile, 1, true, ioutil.Discard)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = uploader.Upload()
 				Expect(err).ShouldNot(HaveOccurred())
