@@ -1,4 +1,4 @@
-package slo_test
+package pipeline_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -9,5 +9,5 @@ import (
 
 func TestSlo(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Slo Suite")
+	RunSpecs(t, "Pipeline Suite")
 }

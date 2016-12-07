@@ -1,8 +1,8 @@
-package slo_test
+package swiftlygo_test
 
 import (
+	. "github.com/ibmjstart/swiftlygo"
 	"github.com/ibmjstart/swiftlygo/auth/mock"
-	. "github.com/ibmjstart/swiftlygo/slo"
 
 	"fmt"
 	. "github.com/onsi/ginkgo"

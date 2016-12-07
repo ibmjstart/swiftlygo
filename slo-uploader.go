@@ -1,8 +1,9 @@
-package slo
+package swiftlygo
 
 import (
 	"fmt"
 	"github.com/ibmjstart/swiftlygo/auth"
+	. "github.com/ibmjstart/swiftlygo/pipeline"
 	"github.com/ncw/swift"
 	"io"
 	"os"

@@ -1,4 +1,4 @@
-package slo_test
+package pipeline_test
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/mattetti/filebuffer"
 	"time"
 
-	. "github.com/ibmjstart/swiftlygo/slo"
+	. "github.com/ibmjstart/swiftlygo/pipeline"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
