@@ -1,7 +1,7 @@
 # swiftlygo
 
 
-[![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat-square)](https://github.com/RichardLitt/standard-readme)
+[![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg)](https://github.com/RichardLitt/standard-readme)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ibmjstart/swiftlygo)](https://goreportcard.com/report/github.com/ibmjstart/swiftlygo)
 [![Build Status](https://travis-ci.org/ibmjstart/swiftlygo.svg?branch=master)](https://travis-ci.org/ibmjstart/swiftlygo)
 [![GoDoc](https://godoc.org/github.com/ibmjstart/swiftlygo?status.svg)](https://godoc.org/github.com/ibmjstart/swiftlygo)
