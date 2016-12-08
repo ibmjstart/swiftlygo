@@ -42,6 +42,7 @@ func (s *SwiftDestination) CreateSLO(containerName, manifestName, manifestEtag s
 	request.Header.Add("X-Auth-Token", s.SwiftConnection.AuthToken)
 	request.Header.Add("Content-Length", strconv.Itoa(len(sloManifestJSON)))
 	response, err := http.DefaultClient.Do(request)
+	defer response.Body.Close()
 	if err != nil {
 		return fmt.Errorf("Error sending manifest upload request: %s", err)
 	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
@@ -70,6 +71,7 @@ func (s *SwiftDestination) CreateDLO(manifestContainer, manifestName, objectCont
 	request.Header.Add("X-Object-Manifest", manifest)
 
 	response, err := http.DefaultClient.Do(request)
+	defer response.Body.Close()
 	if err != nil {
 		return fmt.Errorf("Error sending manifest upload request: %s", err)
 	} else if response.StatusCode < 200 || response.StatusCode >= 300 {
