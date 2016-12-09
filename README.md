@@ -77,7 +77,7 @@ package example
 
 import (
 	"github.com/ibmjstart/swiftlygo/auth"
-	"github.com/ibmjstart/swiftlygo/slo"
+	"github.com/ibmjstart/swiftlygo"
 	"os"
 )
 
@@ -91,7 +91,7 @@ func main() {
 	if err != nil {
 		// reading file failed, handle appropriately
 	}
-	uploader, err := slo.NewUploader(destination,
+	uploader, err := slo.NewSloUploader(destination,
 		10000000,//file chunk size in bytes (set to something larger for multi-gigabyte files and something smaller for files < 10MB)
 		"container name",
 		"object name",//name that you want to reference the whole SLO by
@@ -132,7 +132,7 @@ func main() {
 	if err != nil {
 		// connection failed, handle appropriately
 	}
-	uploader := swiftlygo.NewDloManifestUploader(destination,
+	uploader := swiftlygo.NewDloUploader(destination,
 		"dlo container name", //name of the container the manifest will be created in
 		"manifest name",
 		"object container", //name of the container the DLO's segments will be in
