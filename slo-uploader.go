@@ -114,12 +114,12 @@ func NewSloUploader(connection auth.Destination, chunkSize uint, container strin
 	fromSource, numberChunks := BuildChunks(uint(fileSize), chunkSize)
 
 	// start status
-	status := newStatus(numberChunks, chunkSize, outputChannel)
+	status := NewStatus(numberChunks, chunkSize, outputChannel)
 	// Asynchronously print status every 5 seconds
 	go func(status *Status, intervalSeconds uint) {
 		for {
 			time.Sleep(time.Duration(intervalSeconds) * time.Second)
-			status.print()
+			status.Print()
 		}
 	}(status, 60)
 
@@ -181,12 +181,13 @@ func NewSloUploader(connection auth.Destination, chunkSize uint, container strin
 // Upload uploads the sloUploader's source file to object storage
 func (u *SloUploader) Upload() error {
 	var errCount uint
-	u.Status.start()
+	u.Status.Start()
 	// drain the upload counts
 	go func() {
-		defer u.Status.stop()
+		defer u.Status.Stop()
 		for range u.uploadCounts {
-			u.Status.uploadComplete()
+			u.Status.UploadComplete()
+			u.Status.Print()
 		}
 	}()
 	// close the errors channel after topManifests is empty

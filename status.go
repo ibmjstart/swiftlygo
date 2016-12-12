@@ -71,7 +71,7 @@ type Status struct {
 
 // NewStatus creates a new Status with the number of individual
 // uploads and the size of each upload.
-func newStatus(numberUploads, uploadSize uint, output chan string) *Status {
+func NewStatus(numberUploads, uploadSize uint, output chan string) *Status {
 	completed := make(chan struct{})
 	requestStatus := make(chan chan *currentStatus)
 	signalStart, signalStop := make(chan struct{}), make(chan struct{})
@@ -112,19 +112,19 @@ func newStatus(numberUploads, uploadSize uint, output chan string) *Status {
 	return stat
 }
 
-// start begins timing the upload
-func (s *Status) start() {
+// Start begins timing the upload. Only call this once.
+func (s *Status) Start() {
 	s.signalStart <- struct{}{}
 }
 
-// stop finalizes the duration of the upload
-func (s *Status) stop() {
+// Stop finalizes the duration of the upload. Only call this once.
+func (s *Status) Stop() {
 	s.signalStop <- struct{}{}
 }
 
-// uploadComplete marks that one chunk has been uploaded. Call this
+// UploadComplete marks that one chunk has been uploaded. Call this
 // each time an upload succeeds.
-func (s *Status) uploadComplete() {
+func (s *Status) UploadComplete() {
 	s.chunkCompleted <- struct{}{}
 }
 
@@ -178,6 +178,6 @@ func (s *Status) String() string {
 }
 
 // Print sends the current status of the upload to the output channel.
-func (s *Status) print() {
+func (s *Status) Print() {
 	s.outputChannel <- s.String()
 }
