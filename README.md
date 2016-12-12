@@ -76,6 +76,7 @@ Here's a simple example of using the SLO API to upload a file.
 package example
 
 import (
+	"fmt"
 	"github.com/ibmjstart/swiftlygo/auth"
 	"github.com/ibmjstart/swiftlygo"
 	"os"
@@ -86,12 +87,16 @@ func main() {
 	destination, err := auth.Authenticate("username", "apikey", "authurl", "domain", "tenant")
 	if err != nil {
 		// connection failed, handle appropriately
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	uploadFile, err := os.Open("file/path")
 	if err != nil {
 		// reading file failed, handle appropriately
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	uploader, err := slo.NewSloUploader(destination,
+	uploader, err := swiftlygo.NewSloUploader(destination,
 		10000000,//file chunk size in bytes (set to something larger for multi-gigabyte files and something smaller for files < 10MB)
 		"container name",
 		"object name",//name that you want to reference the whole SLO by
@@ -101,10 +106,14 @@ func main() {
 		os.Stdout)
 	if err != nil {
 		// there was an error preparing the upload, handle appropriately
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	err = uploader.Upload()
 	if err != nil {
 		// there was an error uploading your SLO, handle appropriately
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
 ```
@@ -122,8 +131,10 @@ Here's an example of using the DLO API to create a manifest.
 package example
 
 import (
+	"fmt"
 	"github.com/ibmjstart/swiftlygo"
 	"github.com/ibmjstart/swiftlygo/auth"
+	"os"
 )
 
 func main() {
@@ -131,6 +142,8 @@ func main() {
 	destination, err := auth.Authenticate("username", "apikey", "authurl", "domain", "tenant")
 	if err != nil {
 		// connection failed, handle appropriately
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	uploader := swiftlygo.NewDloUploader(destination,
 		"dlo container name", //name of the container the manifest will be created in
@@ -139,10 +152,14 @@ func main() {
 		"prefix-")          //prefix for files that are segments of this DLO
 	if err != nil {
 		// there was an error preparing the upload, handle appropriately
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 	err = uploader.Upload()
 	if err != nil {
 		// there was an error uploading your DLO, handle appropriately
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 }
 ```
