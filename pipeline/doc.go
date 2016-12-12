@@ -1,6 +1,10 @@
 /*
 Package pipeline implements a low-level pipelined API for SLO uploads.
 
+You should only use this package if you need a customized upload pipeline.
+The github.com/ibmjstart/swiftlygo.SloUploader should be sufficient for
+basic uploads.
+
 Most of the functions defined in this package are stages in an upload
 pipeline that communicate with channels of type FileChunk. A FileChunk
 is a representation of a chunk of a file that is being uploaded, but is
