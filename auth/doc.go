@@ -39,5 +39,25 @@ You can authenticate with:
 	Authenticate("user_name", "password", "https://identity.open.softlayer.com/v3", "domain_name", "")
 
 Please note that we had to append "/v3" to the auth URL.
+
+For Softlayer object stores, you can find your credentials in the user interface by clicking
+"View Credentials" when viewing an Object Storage instance in the Web UI.
+
+You should see something like:
+
+	Authentication Endpoint:
+	Public: https://public-url.com.../v1.0/
+	Private: https://private-url.com.../v1.0/
+
+	Username:
+	username...
+
+	API Key (Password):
+	password...
+
+You can authenticate with:
+
+	Authenticate("username...", "password...", "https:public-url.com.../v1.0/", "", "")
+
 */
 package auth
