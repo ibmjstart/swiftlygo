@@ -2,9 +2,10 @@ package mock
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"github.com/ibmjstart/swiftlygo/auth"
 	"github.com/ncw/swift"
-	"io"
 )
 
 // closableBuffer wraps the bytes.Buffer with the close method so that it can be used
@@ -23,6 +24,13 @@ func (c *closableBuffer) Close() error {
 
 func (c *closableBuffer) Write(p []byte) (int, error) {
 	return c.Contents.Write(p)
+}
+
+func (c *closableBuffer) Headers() (swift.Headers, error) {
+	h := make(swift.Headers)
+	hash := md5.Sum(c.Contents.Bytes())
+	h["Etag"] = hex.EncodeToString(hash[:])
+	return h, nil
 }
 
 // BufferDestination implements the Destination and keeps the observed
@@ -70,7 +78,7 @@ func (b *BufferDestination) handleContainerAndObject(container, object string) {
 
 // CreateFile returns a reference to the fileContent buffer held by this BufferDestination
 // that can be written into, though it may not be safe for concurrent operations.
-func (b *BufferDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (io.WriteCloser, error) {
+func (b *BufferDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (auth.WriteCloseHeader, error) {
 	b.handleContainerAndObject(container, objectName)
 	return b.FileContent, nil
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/ibmjstart/swiftlygo/auth"
 	"github.com/ncw/swift"
-	"io"
 )
 
 // ErrorDestination implements the Destination interface but always returns
@@ -17,8 +16,8 @@ func NewErrorDestination() ErrorDestination {
 }
 
 // CreateFile always returns an io.WriteCloser that does nothing and an empty error.
-func (e ErrorDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (io.WriteCloser, error) {
-	return nullWriteCloser(0), fmt.Errorf("")
+func (e ErrorDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (auth.WriteCloseHeader, error) {
+	return nullWriteCloser{}, fmt.Errorf("")
 }
 
 // CreateSLO always returns an empty error.
