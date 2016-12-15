@@ -323,7 +323,7 @@ func ReadHashAndUpload(chunks <-chan FileChunk, errors chan<- error, dataSource 
 	RetryLoop:
 		for attempts := uint(0); true; attempts++ {
 			// Exit loop if we retry the max times or if we succeed
-			if attempts > UploadMaxAttempts {
+			if attempts > UploadMaxAttempts || err == nil {
 				break RetryLoop
 			} else if attempts > 0 {
 				time.Sleep(UploadRetryBaseWait << attempts)
