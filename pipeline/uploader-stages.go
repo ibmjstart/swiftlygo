@@ -282,6 +282,20 @@ func Counter(chunks <-chan FileChunk) (<-chan FileChunk, <-chan Count) {
 	return outChunks, outCount
 }
 
+// UploadBufferSize is the size of the data buffer that each ReadHashAndUpload goroutine
+// will use to read data from the hard drive. This works best as a multiple of the hard
+// drive sector size for an internal hard drive. If using a network-mounted hard drive,
+// some experimentation may be needed to find an optimal value.
+var UploadBufferSize uint = 1024 * 4
+
+// UploadMaxAttempts is the number of times that each ReadHashAndUpload goroutine will
+// retry a failing upload before moving on to the next one.
+var UploadMaxAttempts uint = 5
+
+// UploadRetryBaseWait is the shortest time unit that each ReadHashAndUpload goroutine will
+// wait between upload attempts.
+var UploadRetryBaseWait time.Duration = time.Second
+
 // ReadHashAndUpload reads the data, performs the hash, and uploads it. Its monolithic design isn't very
 // modular, but it reads the file and discards the data within a single function, which saves a lot of
 // memory. Use this if memory footprint is a major concern.
@@ -289,15 +303,9 @@ func Counter(chunks <-chan FileChunk) (<-chan FileChunk, <-chan Count) {
 // properties already set.
 func ReadHashAndUpload(chunks <-chan FileChunk, errors chan<- error, dataSource io.ReaderAt, dest auth.Destination) <-chan FileChunk {
 	// Pre-allocate variables to reduce memory overhead
-	const (
-		bufSize       = 1024 * 4 // 4KiB seems to work quickly, with a low total footprint
-		maxAttempts   = 5
-		retryBaseWait = time.Second
-	)
 	var (
-		dataBuffer = make([]byte, bufSize)
-		hasher     = md5.New()
-		upload     io.WriteCloser
+		dataBuffer = make([]byte, UploadBufferSize)
+		upload     auth.WriteCloseHeader
 		err        error
 	)
 	return Map(chunks, errors, func(chunk FileChunk) (FileChunk, error) {
@@ -313,9 +321,18 @@ func ReadHashAndUpload(chunks <-chan FileChunk, errors chan<- error, dataSource 
 
 		// Loop until an upload succeeds
 	RetryLoop:
-		for attempts := 0; true; attempts++ {
-			// Zero out the old hash since the hasher is reused between iterations
-			hasher.Reset()
+		for attempts := uint(0); true; attempts++ {
+			// Exit loop if we retry the max times or if we succeed
+			if attempts > UploadMaxAttempts {
+				break RetryLoop
+			} else if attempts > 0 {
+				if err != nil {
+					time.Sleep(UploadRetryBaseWait << attempts)
+				} else {
+					break RetryLoop
+				}
+			}
+
 			// Track how many bytes that we've read for the current chunk
 			var bytesReadTotal int64
 
@@ -343,7 +360,6 @@ func ReadHashAndUpload(chunks <-chan FileChunk, errors chan<- error, dataSource 
 					chunkEndDepth = bytesRemaining
 				}
 
-				hasher.Write(dataBuffer[:chunkEndDepth])          // Add data to running hash
 				_, err = upload.Write(dataBuffer[:chunkEndDepth]) // Add data to running upload
 				if err != nil {
 					errors <- fmt.Errorf("Error uploading chunk %d: %s", chunk.Number, err)
@@ -353,18 +369,19 @@ func ReadHashAndUpload(chunks <-chan FileChunk, errors chan<- error, dataSource 
 				// Update the total bytes read
 				bytesReadTotal += int64(bytesRead)
 			}
-			// Get final hash for data
-			chunk.Hash = hex.EncodeToString(hasher.Sum(nil))
 			// Finalize upload
 			err = upload.Close()
 			if err != nil {
 				errors <- fmt.Errorf("Error closing upload for chunk %d: %s", chunk.Number, err)
+				continue RetryLoop
 			}
-			// Exit loop if we retry the max times or if we succeed
-			if attempts > maxAttempts || err == nil {
-				break RetryLoop
+			// Get final hash for data
+			headers, err := upload.Headers()
+			if err != nil {
+				errors <- fmt.Errorf("Unable to get object headers, can't get hash for chunk %d: %s", chunk.Number, err)
+				continue RetryLoop
 			}
-			time.Sleep(retryBaseWait << uint(attempts))
+			chunk.Hash = headers["Etag"]
 		}
 		return chunk, nil
 	})

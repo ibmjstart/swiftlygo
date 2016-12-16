@@ -3,7 +3,6 @@ package mock
 import (
 	"github.com/ibmjstart/swiftlygo/auth"
 	"github.com/ncw/swift"
-	"io"
 )
 
 // NullDestination implements the Destination interface but always returns
@@ -16,7 +15,7 @@ func NewNullDestination() NullDestination {
 	return NullDestination{}
 }
 
-type nullWriteCloser uint8
+type nullWriteCloser struct{}
 
 func (n nullWriteCloser) Close() error {
 	return nil
@@ -26,10 +25,14 @@ func (n nullWriteCloser) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+func (n nullWriteCloser) Headers() (swift.Headers, error) {
+	return make(swift.Headers), nil
+}
+
 // CreateFile takes the provided information and consigns it to the void. It returns
 // an io.WriteCloser that will ignore all data written.
-func (n NullDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (io.WriteCloser, error) {
-	return nullWriteCloser(0), nil
+func (n NullDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (auth.WriteCloseHeader, error) {
+	return nullWriteCloser{}, nil
 }
 
 // CreateSLO always returns nil.

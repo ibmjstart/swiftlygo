@@ -11,9 +11,19 @@ import (
 	"strings"
 )
 
+// WriteCloseHeader extends the io.WriteCloser with an additional method for
+// getting a set of HTTP headers back from the WriteCloser after it is closed.
+type WriteCloseHeader interface {
+	io.WriteCloser
+	Headers() (swift.Headers, error)
+}
+
+// Ensure that ObjectCreateFile pointers fulfill interface at compile-time
+var _ WriteCloseHeader = &swift.ObjectCreateFile{}
+
 // Destination defines a valid upload destination for files.
 type Destination interface {
-	CreateFile(container string, objectName string, checkHash bool, Hash string) (io.WriteCloser, error)
+	CreateFile(container string, objectName string, checkHash bool, Hash string) (WriteCloseHeader, error)
 	CreateSLO(containerName, manifestName, manifestEtag string, sloManifestJSON []byte) error
 	CreateDLO(manifestContainer, manifestName, objectContainer, filenamePrefix string) error
 	FileNames(container string) ([]string, error)
@@ -27,7 +37,7 @@ type SwiftDestination struct {
 
 // CreateFile begins the process of creating a file in the destination. Write data to
 // the returned WriteCloser and then close it to upload the data. Be sure to handle errors.
-func (s *SwiftDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (io.WriteCloser, error) {
+func (s *SwiftDestination) CreateFile(container, objectName string, checkHash bool, Hash string) (WriteCloseHeader, error) {
 	return s.SwiftConnection.ObjectCreate(container, objectName, checkHash, Hash, "", nil)
 }
 
