@@ -24,9 +24,16 @@ Large Objects.
 A Static Large Object (SLO) is a manifest file that lists other files within an object storage
 instance in a particular order. When you read the contents of an SLO, you get the contents of every file listed
 within its manifest in the order that they are defined within the manifest. This allows you to build large files
-out of small pieces. OpenStack Object Storage does not allow single files to be larger than 5GB, but an SLO
-manifest can reference many files of size <= 5GB to create a single readable file within the Object Store that is
-<= 5TB in size. This can be immensely helpful for large datasets.
+out of small pieces.
+
+OpenStack Object Storage does not allow single files to be larger than 5GB, and a single SLO manifest file can
+only reference 1000 distinct objects. Fortunately, SLO manifest files can reference
+other SLO manifest files. Swiftlygo always creates at least two manifest files (one top-level manifest
+that references up to 1000 other manifests, and at least one manifest referencing chunks). If you have more
+than 1000 file chunks, it can create up to 999 additional manifests to allow a maximum theoretical
+object size of 5PB (1,000,000 chunks of 5GB each). If you have fewer than 1000 chunks in your file, it
+may be faster to reference the uploaded file that ends with `-manifest-0000` rather than the top-level manifest, as
+the sub-manifest has the same contents.
 
 A Dynamic Large Object (DLO) is equally useful, but in different circumstances. Rather than specify an ordered
 list of files to be treated as the DLO's contents, a DLO specifies a filename prefix within a particular
